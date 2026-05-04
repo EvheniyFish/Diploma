@@ -1,0 +1,40 @@
+﻿version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DB_PATH=/data/cass.db
+      - ML_SERVICE_URL=http://ml_service:8000
+    volumes:
+      - db_data:/data
+    depends_on:
+      - ml_service
+
+  ml_service:
+    build: ./ml_service
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ml_service/models:/app/models:ro
+
+  simulator:
+    build: ./simulator
+    environment:
+      - API_URL=http://backend:3000
+      - INTERVAL_MS=10000
+    depends_on:
+      - backend
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
