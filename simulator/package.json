@@ -1,0 +1,12 @@
+﻿{
+  "name": "cass-simulator",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node src/index.js",
+    "offline": "node src/offline.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5"
+  }
+}

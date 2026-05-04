@@ -1,0 +1,25 @@
+﻿{
+  "name": "cass-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src/",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "vue": "^3.4.27",
+    "vue-router": "^4.3.2",
+    "pinia": "^2.1.7",
+    "axios": "^1.7.2",
+    "primevue": "^4.0.0",
+    "echarts": "^5.5.0"
+  },
+  "devDependencies": {
+    "vite": "^5.3.1",
+    "@vitejs/plugin-vue": "^5.0.5",
+    "vitest": "^1.6.0",
+    "eslint": "^9.5.0"
+  }
+}
