@@ -1,43 +1,129 @@
-﻿"use strict";
-const axios = require("axios");
+"use strict";
 const config = require("../config");
 const { getDb } = require("../db");
-const { getFeatureWindow } = require("../domain/telemetry");
-const { upsert } = require("../domain/health");
+const { getFeatureWindow, buildFeatures } = require("../domain/telemetry");
+const { upsert, escalateStaleRisk } = require("../domain/health");
+const { predict } = require("./client");
 
-const mlClient = axios.create({ baseURL: config.ml.url, timeout: 30000 });
+let logger = console;
+
+function setLogger(fastifyLog) {
+  logger = fastifyLog;
+}
 
 async function assessUnit(unit) {
-  const window = getFeatureWindow(unit.id, 360);
-  if (window.length < 10) return;
+  const rows = getFeatureWindow(unit.id, 360);
 
-  const passport = JSON.parse(unit.passport_json);
-  const { buildFeatureVector } = require("../ml/features");
-  const features = buildFeatureVector(window, passport);
+  if (rows.length < 10) {
+    logger.warn({ unit_id: unit.id }, "Недостатньо телеметрії для оцінки (менше 10 точок)");
+    return;
+  }
 
-  const { data } = await mlClient.post("/predict", {
-    model_code: unit.model_code,
-    passport_hash: unit.passport_hash,
-    features,
-  });
+  const features = buildFeatures(rows);
 
-  upsert(unit.id, data);
+  let prediction;
+  try {
+    prediction = await predict({
+      model_code: unit.model_code,
+      passport_hash: unit.passport_hash,
+      features,
+    });
+  } catch (err) {
+    logger.warn({ unit_id: unit.id, err: err.message }, "ML-сервіс недоступний, пропускаємо одиницю");
+    return;
+  }
+
+  const { new_status, previous_status, changed } = upsert(unit.id, prediction);
+
+  if (changed) {
+    getDb()
+      .prepare(
+        `INSERT INTO event_log (unit_id, severity, event_type, payload_json, message)
+         VALUES (?, ?, 'status_changed', ?, ?)`
+      )
+      .run(
+        unit.id,
+        new_status === "imminent" ? "critical" : new_status === "risk" ? "warning" : "info",
+        JSON.stringify({
+          previous_status,
+          new_status,
+          anomaly_score: prediction.anomaly_score,
+          rul_hours: prediction.rul_hours ?? null,
+        }),
+        `Статус змінено: ${previous_status} → ${new_status}`
+      );
+
+    logger.info({ unit_id: unit.id, previous_status, new_status }, "Статус одиниці змінено");
+  }
 }
 
-async function runSchedule() {
-  const units = getDb().prepare(`
-    SELECT u.id, u.model_id, m.model_code, m.passport_json, m.passport_hash
-    FROM equipment_units u
-    JOIN equipment_models m ON m.id = u.model_id
-    WHERE u.is_active = 1
-  `).all();
+async function runReassessment() {
+  const units = getDb()
+    .prepare(
+      `SELECT u.id, u.model_id, m.model_code, m.passport_hash
+       FROM equipment_units u
+       JOIN equipment_models m ON m.id = u.model_id
+       WHERE u.is_active = 1`
+    )
+    .all();
 
-  await Promise.allSettled(units.map(assessUnit));
+  logger.info({ count: units.length }, "Запуск планового переоцінювання здоров'я обладнання");
+
+  const results = await Promise.allSettled(units.map((u) => assessUnit(u)));
+
+  let failed = 0;
+  for (const r of results) {
+    if (r.status === "rejected") {
+      failed++;
+      logger.error({ err: r.reason?.message }, "Помилка оцінки одиниці");
+    }
+  }
+
+  const escalated = escalateStaleRisk();
+  if (escalated > 0) {
+    logger.warn({ escalated }, "Одиниці автоматично підвищено до imminent через тривалий стан risk");
+  }
+
+  logger.info({ total: units.length, failed, escalated }, "Переоцінювання завершено");
 }
 
-function start() {
-  setInterval(runSchedule, config.ml.scheduleInterval);
-  setTimeout(runSchedule, 5000);
+async function runForUnit(unit_id) {
+  const unit = getDb()
+    .prepare(
+      `SELECT u.id, u.model_id, m.model_code, m.passport_hash
+       FROM equipment_units u
+       JOIN equipment_models m ON m.id = u.model_id
+       WHERE u.id=? AND u.is_active=1`
+    )
+    .get(unit_id);
+
+  if (!unit) {
+    const err = new Error(`Активна одиниця #${unit_id} не знайдена`);
+    err.code = "NOT_FOUND";
+    throw err;
+  }
+
+  await assessUnit(unit);
 }
 
-module.exports = { start, runSchedule };
+function start(fastifyLog) {
+  if (fastifyLog) setLogger(fastifyLog);
+
+  setTimeout(async () => {
+    try {
+      await runReassessment();
+    } catch (err) {
+      logger.error({ err: err.message }, "Помилка початкового переоцінювання");
+    }
+  }, 5000);
+
+  setInterval(async () => {
+    try {
+      await runReassessment();
+    } catch (err) {
+      logger.error({ err: err.message }, "Помилка планового переоцінювання");
+    }
+  }, config.ml.scheduleIntervalMs);
+}
+
+module.exports = { start, runReassessment, runForUnit };
