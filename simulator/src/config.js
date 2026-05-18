@@ -1,8 +1,11 @@
-﻿"use strict";
+"use strict";
+require("dotenv").config({ path: require("path").join(__dirname, "..", ".env") });
+
 module.exports = {
-  API_URL: process.env.API_URL || "http://localhost:3000",
-  API_KEY: process.env.API_KEY || "dev-key",
-  INTERVAL_MS: parseInt(process.env.INTERVAL_MS || "10000"),
-  SPEED_FACTOR: parseFloat(process.env.SPEED_FACTOR || "1.0"),
-  UNITS: JSON.parse(process.env.UNITS_JSON || "[]"),
+  backendUrl: process.env.BACKEND_URL || "http://localhost:3000",
+  ingestApiKey: process.env.INGEST_API_KEY || "dev-ingest-key",
+  tickIntervalSeconds: parseInt(process.env.TICK_INTERVAL_SECONDS || "10", 10),
+  timeSpeedFactor: parseFloat(process.env.TIME_SPEED_FACTOR || "1.0"),
+  seed: parseInt(process.env.SEED || "42", 10),
+  controlPort: parseInt(process.env.CONTROL_PORT || "3001", 10),
 };
