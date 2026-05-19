@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "cass-frontend",
   "version": "1.0.0",
   "scripts": {
@@ -14,7 +14,11 @@
     "pinia": "^2.1.7",
     "axios": "^1.7.2",
     "primevue": "^4.0.0",
-    "echarts": "^5.5.0"
+    "@primevue/themes": "^4.0.0",
+    "echarts": "^5.5.0",
+    "vue-echarts": "^7.0.3",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
   },
   "devDependencies": {
     "vite": "^5.3.1",
