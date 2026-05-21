@@ -155,9 +155,8 @@ import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import InputText from 'primevue/inputtext'
 import Dialog from 'primevue/dialog'
-import { simApi } from '../api/index.js'
+import api, { simApi } from '../api/index.js'
 import { useNotificationsStore } from '../stores/notifications.js'
-import axios from 'axios'
 
 const notifications = useNotificationsStore()
 
@@ -244,7 +243,7 @@ async function submitInject() {
 
 async function checkHealth() {
   try {
-    await axios.get((import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1') + '/healthz', { timeout: 5000 })
+    await api.get('/healthz')
     mlStatus.value = true
   } catch {
     mlStatus.value = false
