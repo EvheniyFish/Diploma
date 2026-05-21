@@ -120,7 +120,7 @@
         </div>
         <div class="form-field">
           <label class="form-label required">Дата введення в експлуатацію</label>
-          <InputText v-model="addForm.commissioned_at" type="date" style="width: 100%;" />
+          <DatePicker v-model="addForm.commissioned_at" :style="{ width: '100%' }" />
           <span v-if="addErrors.commissioned_at" class="form-error">{{ addErrors.commissioned_at }}</span>
         </div>
         <div class="form-field">
@@ -151,6 +151,7 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Dialog from 'primevue/dialog'
 import StatusBadge from '../components/StatusBadge.vue'
+import DatePicker from '../components/DatePicker.vue'
 import { useUnitsStore } from '../stores/units.js'
 import { useModelsStore } from '../stores/models.js'
 

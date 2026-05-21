@@ -40,18 +40,18 @@
         style="width: 180px;"
         @change="onFilterChange"
       />
-      <InputText
+      <DatePicker
         v-model="filterFrom"
-        type="date"
-        style="width: 150px; font-size: 13px;"
-        @change="onFilterChange"
+        placeholder="Від (дд.мм.рррр)"
+        :style="{ width: '150px' }"
+        @update:modelValue="onFilterChange"
       />
       <span style="font-size: 13px; color: var(--color-text-muted);">—</span>
-      <InputText
+      <DatePicker
         v-model="filterTo"
-        type="date"
-        style="width: 150px; font-size: 13px;"
-        @change="onFilterChange"
+        placeholder="До (дд.мм.рррр)"
+        :style="{ width: '150px' }"
+        @update:modelValue="onFilterChange"
       />
       <button class="time-range-btn" @click="clearFilters">Скинути</button>
     </div>
@@ -162,6 +162,7 @@ import Column from 'primevue/column'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
 import Dialog from 'primevue/dialog'
+import DatePicker from '../components/DatePicker.vue'
 import { eventsApi, unitsApi } from '../api/index.js'
 import { useNotificationsStore } from '../stores/notifications.js'
 
