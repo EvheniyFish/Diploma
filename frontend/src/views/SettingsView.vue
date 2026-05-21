@@ -244,7 +244,7 @@ async function submitInject() {
 
 async function checkHealth() {
   try {
-    await axios.get('/healthz', { timeout: 5000 })
+    await axios.get((import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1') + '/healthz', { timeout: 5000 })
     mlStatus.value = true
   } catch {
     mlStatus.value = false

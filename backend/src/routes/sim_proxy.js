@@ -46,18 +46,18 @@ async function proxyGet(path, reply) {
 
 module.exports = async (fastify) => {
   fastify.post("/sim/inject_fault", async (req, reply) => {
-    await proxyPost("/inject_fault", req.body, reply);
+    await proxyPost("/sim/inject_fault", req.body, reply);
   });
 
   fastify.get("/sim/state", async (req, reply) => {
-    await proxyGet("/state", reply);
+    await proxyGet("/sim/state", reply);
   });
 
   fastify.post("/sim/reset_unit", async (req, reply) => {
-    await proxyPost("/reset_unit", req.body, reply);
+    await proxyPost("/sim/reset_unit", req.body, reply);
   });
 
   fastify.post("/sim/speed", async (req, reply) => {
-    await proxyPost("/speed", req.body, reply);
+    await proxyPost("/sim/speed", req.body, reply);
   });
 };
