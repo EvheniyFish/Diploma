@@ -47,11 +47,16 @@ def heuristic_predict(model_code: str, features: dict[str, float]) -> PredictRes
         elif name.endswith("__in_critical"):
             anomaly_indicators.append(float(value) * 4.0)
 
+    # Also consider slope-based trend indicators
+    for name, value in features.items():
+        if name.endswith("__slope") and abs(value) > 0:
+            anomaly_indicators.append(min(1.0, abs(value) * 10.0))
+
     if not anomaly_indicators:
         anomaly_score = 0.05
     else:
         raw = float(np.percentile(anomaly_indicators, 80))
-        anomaly_score = min(0.95, raw * 0.5 + 0.05)
+        anomaly_score = min(0.95, raw * 1.0 + 0.05)
 
     # Find the most anomalous channel by dev_from_nominal
     worst_channel: Optional[str] = None

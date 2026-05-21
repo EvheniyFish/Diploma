@@ -70,13 +70,20 @@ const getFeatureWindow = (unit_id, n = 360) =>
     )
     .all(unit_id, n);
 
-function buildFeatures(rows) {
+function buildFeatures(rows, passport) {
   if (!rows || rows.length === 0) return {};
 
   const byChannel = {};
   for (const r of rows) {
     if (!byChannel[r.channel_code]) byChannel[r.channel_code] = [];
     byChannel[r.channel_code].push(r.value);
+  }
+
+  const chMeta = {};
+  if (passport && Array.isArray(passport.channels)) {
+    for (const ch of passport.channels) {
+      chMeta[ch.code] = ch;
+    }
   }
 
   const features = {};
@@ -109,6 +116,30 @@ function buildFeatures(rows) {
     features[`${ch}__max`] = max;
     features[`${ch}__median`] = median;
     features[`${ch}__slope`] = slope;
+
+    const meta = chMeta[ch];
+    if (meta) {
+      const nominal = meta.nominal ?? 0;
+      const opRange = meta.operating_range ?? [0, 1];
+      const critRange = meta.critical_range ?? [null, null];
+      const opLow = opRange[0];
+      const opHigh = opRange[1];
+      const opWidth = Math.max(1, Math.abs(opHigh - opLow));
+      const critLow = critRange[0];
+      const critHigh = critRange[1];
+
+      features[`${ch}__dev_from_nominal`] = (mean - nominal) / opWidth;
+      features[`${ch}__time_above_op`] = values.filter((v) => v > opHigh).length / n;
+      features[`${ch}__time_below_op`] = values.filter((v) => v < opLow).length / n;
+
+      if (critHigh != null && critLow != null) {
+        if (critHigh > critLow) {
+          features[`${ch}__in_critical`] = values.filter((v) => v >= critLow && v <= critHigh).length / n;
+        } else {
+          features[`${ch}__in_critical`] = values.filter((v) => v <= critHigh).length / n;
+        }
+      }
+    }
   }
 
   return features;

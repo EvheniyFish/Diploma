@@ -19,7 +19,12 @@ async function assessUnit(unit) {
     return;
   }
 
-  const features = buildFeatures(rows);
+  let passport = null;
+  if (unit.passport_json) {
+    try { passport = JSON.parse(unit.passport_json); } catch (_) {}
+  }
+
+  const features = buildFeatures(rows, passport);
 
   let prediction;
   try {
@@ -60,7 +65,7 @@ async function assessUnit(unit) {
 async function runReassessment() {
   const units = getDb()
     .prepare(
-      `SELECT u.id, u.model_id, m.model_code, m.passport_hash
+      `SELECT u.id, u.model_id, m.model_code, m.passport_hash, m.passport_json
        FROM equipment_units u
        JOIN equipment_models m ON m.id = u.model_id
        WHERE u.is_active = 1`
@@ -90,7 +95,7 @@ async function runReassessment() {
 async function runForUnit(unit_id) {
   const unit = getDb()
     .prepare(
-      `SELECT u.id, u.model_id, m.model_code, m.passport_hash
+      `SELECT u.id, u.model_id, m.model_code, m.passport_hash, m.passport_json
        FROM equipment_units u
        JOIN equipment_models m ON m.id = u.model_id
        WHERE u.id=? AND u.is_active=1`
