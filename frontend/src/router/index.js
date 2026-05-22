@@ -8,6 +8,7 @@ const routes = [
   { path: '/models/new', name: 'model-new', component: () => import('../views/ModelEditorView.vue') },
   { path: '/models/:id', name: 'model-edit', component: () => import('../views/ModelEditorView.vue') },
   { path: '/events', name: 'events', component: () => import('../views/EventsView.vue') },
+  { path: '/analysis', name: 'analysis', component: () => import('../views/AnalysisView.vue') },
   { path: '/settings', name: 'settings', component: () => import('../views/SettingsView.vue') },
 ]
 
