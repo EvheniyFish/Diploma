@@ -13,6 +13,7 @@ const fastify = require("fastify")({
 const config = require("./config");
 const { getDb } = require("./db");
 const scheduler = require("./ml/scheduler");
+const sysagent = require("./domain/sysagent");
 
 async function build() {
   getDb();
@@ -49,6 +50,7 @@ async function build() {
   await fastify.register(require("./routes/events"), { prefix: API_PREFIX });
   await fastify.register(require("./routes/dashboard"), { prefix: API_PREFIX });
   await fastify.register(require("./routes/sim_proxy"), { prefix: API_PREFIX });
+  await fastify.register(require("./routes/sysinfo"), { prefix: API_PREFIX });
 
   return fastify;
 }
@@ -58,6 +60,7 @@ async function start() {
     await build();
     await fastify.listen({ port: config.port, host: config.host });
     scheduler.start(fastify.log);
+    sysagent.start(fastify.log);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

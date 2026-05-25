@@ -59,3 +59,7 @@ export const simApi = {
   resetUnit: (body) => api.post('/sim/reset_unit', body),
   speed: (body) => api.post('/sim/speed', body),
 }
+
+export const sysApi = {
+  info: () => api.get('/sysinfo'),
+}

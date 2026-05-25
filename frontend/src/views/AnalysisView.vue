@@ -12,7 +12,112 @@
 
     <div v-if="loading && !units.length" class="loading-state">Завантаження...</div>
 
-    <template v-else>
+    <!-- Local server hardware monitor -->
+    <div class="card sysinfo-card">
+      <div class="sysinfo-header">
+        <div class="card-title" style="margin-bottom: 0;">Поточний сервер</div>
+        <div class="sysinfo-meta">
+          <span v-if="sysinfo">{{ sysinfo.metrics.hostname }}</span>
+          <span v-if="sysinfo" style="opacity: 0.5;">·</span>
+          <span v-if="sysinfo">{{ sysinfo.metrics.cpu_count }} ядер</span>
+          <span v-if="sysinfo" style="opacity: 0.5;">·</span>
+          <span v-if="sysinfo">{{ sysinfo.metrics.ram_total_mb >= 1024 ? (sysinfo.metrics.ram_total_mb / 1024).toFixed(0) + ' GB' : sysinfo.metrics.ram_total_mb + ' MB' }} RAM</span>
+          <StatusBadge v-if="sysinfo?.health" :status="sysinfo.health.status" size="sm" style="margin-left: 8px;" />
+        </div>
+      </div>
+
+      <div v-if="!sysinfo" class="sysinfo-loading">Зчитування метрик...</div>
+      <div v-else class="sysinfo-gauges">
+
+        <!-- RAM -->
+        <div class="sysinfo-gauge">
+          <div class="sysinfo-gauge-label">
+            <span>RAM</span>
+            <span class="sysinfo-gauge-value" :style="{ color: gaugeColor(sysinfo.metrics.ram_used_pct, 85, 95) }">
+              {{ sysinfo.metrics.ram_used_pct }}%
+            </span>
+          </div>
+          <div class="sysinfo-gauge-track">
+            <div
+              class="sysinfo-gauge-fill"
+              :style="{ width: sysinfo.metrics.ram_used_pct + '%', background: gaugeColor(sysinfo.metrics.ram_used_pct, 85, 95) }"
+            ></div>
+          </div>
+          <div class="sysinfo-gauge-detail">
+            {{ sysinfo.metrics.ram_total_mb - sysinfo.metrics.ram_free_mb >= 1024
+                ? ((sysinfo.metrics.ram_total_mb - sysinfo.metrics.ram_free_mb) / 1024).toFixed(1) + ' GB'
+                : (sysinfo.metrics.ram_total_mb - sysinfo.metrics.ram_free_mb) + ' MB' }} / {{
+               sysinfo.metrics.ram_total_mb >= 1024
+                ? (sysinfo.metrics.ram_total_mb / 1024).toFixed(0) + ' GB'
+                : sysinfo.metrics.ram_total_mb + ' MB'
+            }}
+          </div>
+        </div>
+
+        <!-- CPU -->
+        <div class="sysinfo-gauge">
+          <div class="sysinfo-gauge-label">
+            <span>CPU</span>
+            <span class="sysinfo-gauge-value" :style="{ color: gaugeColor(sysinfo.metrics.cpu_load_pct, 80, 95) }">
+              {{ sysinfo.metrics.cpu_load_pct != null ? sysinfo.metrics.cpu_load_pct + '%' : '—' }}
+            </span>
+          </div>
+          <div class="sysinfo-gauge-track">
+            <div
+              class="sysinfo-gauge-fill"
+              :style="{ width: (sysinfo.metrics.cpu_load_pct ?? 0) + '%', background: gaugeColor(sysinfo.metrics.cpu_load_pct ?? 0, 80, 95) }"
+            ></div>
+          </div>
+          <div class="sysinfo-gauge-detail">{{ sysinfo.metrics.cpu_count }} логічних ядер</div>
+        </div>
+
+        <!-- Disk -->
+        <div class="sysinfo-gauge">
+          <div class="sysinfo-gauge-label">
+            <span>Диск</span>
+            <span class="sysinfo-gauge-value" :style="{ color: gaugeColor(sysinfo.metrics.disk_used_pct ?? 0, 85, 95) }">
+              {{ sysinfo.metrics.disk_used_pct != null ? sysinfo.metrics.disk_used_pct + '%' : '—' }}
+            </span>
+          </div>
+          <div class="sysinfo-gauge-track">
+            <div
+              class="sysinfo-gauge-fill"
+              :style="{ width: (sysinfo.metrics.disk_used_pct ?? 0) + '%', background: gaugeColor(sysinfo.metrics.disk_used_pct ?? 0, 85, 95) }"
+            ></div>
+          </div>
+          <div class="sysinfo-gauge-detail">{{ sysinfo.metrics.disk_used_pct != null ? (100 - sysinfo.metrics.disk_used_pct) + '% вільно' : 'н/д' }}</div>
+        </div>
+
+        <!-- ML assessment -->
+        <div class="sysinfo-ml" v-if="sysinfo.health">
+          <div class="sysinfo-ml-row">
+            <span class="sysinfo-ml-lbl">Аномалія</span>
+            <span :style="{ color: anomalyColor(sysinfo.health.anomaly_score), fontWeight: '700' }">
+              {{ (sysinfo.health.anomaly_score * 100).toFixed(0) }}%
+            </span>
+          </div>
+          <div class="sysinfo-ml-row" v-if="sysinfo.health.rul_hours != null">
+            <span class="sysinfo-ml-lbl">RUL</span>
+            <span :style="{ color: rulColor(sysinfo.health.rul_hours), fontWeight: '700' }">
+              {{ Math.round(sysinfo.health.rul_hours) }} год
+            </span>
+          </div>
+          <div class="sysinfo-ml-row" v-if="sysinfo.health.predicted_mode">
+            <span class="sysinfo-ml-lbl">Прогноз</span>
+            <code style="font-size: 11px;">{{ sysinfo.health.predicted_mode }}</code>
+          </div>
+          <div v-if="sysinfo.health.rul_hours == null && !sysinfo.health.predicted_mode" style="font-size: 11px; color: var(--color-text-muted);">
+            ML-оцінка накопичується (~5 хв)
+          </div>
+        </div>
+        <div class="sysinfo-ml" v-else>
+          <div style="font-size: 11px; color: var(--color-text-muted); padding-top: 4px;">ML-оцінка накопичується (~5 хв)</div>
+        </div>
+
+      </div>
+    </div>
+
+    <template v-if="!loading || units.length">
 
       <!-- Row 1: fleet score + status counts + category breakdown -->
       <div class="analysis-grid-top">
@@ -202,19 +307,30 @@
   </div>
 </template>
 
+
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import StatusBadge from '../components/StatusBadge.vue'
-import { unitsApi, eventsApi } from '../api/index.js'
+import { unitsApi, eventsApi, sysApi } from '../api/index.js'
 
 const units = ref([])
 const events = ref([])
+const sysinfo = ref(null)
 const loading = ref(false)
 const lastRefreshLabel = ref('—')
 let interval = null
+let sysInterval = null
 
 // ── Data loading ─────────────────────────────────────────────
+
+async function loadSysinfo() {
+  try {
+    sysinfo.value = await sysApi.info()
+  } catch {
+    // silently keep last known value
+  }
+}
 
 async function load() {
   loading.value = true
@@ -370,6 +486,12 @@ function rulColor(h) {
   return '#dc2626'
 }
 
+function gaugeColor(pct, warnAt, critAt) {
+  if (pct >= critAt) return 'var(--color-imminent)'
+  if (pct >= warnAt) return 'var(--color-risk)'
+  return 'var(--color-ok)'
+}
+
 function formatDateTime(ts) {
   return new Intl.DateTimeFormat('uk-UA', {
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
@@ -380,9 +502,14 @@ function formatDateTime(ts) {
 
 onMounted(() => {
   load()
+  loadSysinfo()
   interval = setInterval(load, 30000)
+  sysInterval = setInterval(loadSysinfo, 5000)
 })
-onUnmounted(() => clearInterval(interval))
+onUnmounted(() => {
+  clearInterval(interval)
+  clearInterval(sysInterval)
+})
 </script>
 
 <style scoped>
@@ -461,4 +588,20 @@ onUnmounted(() => clearInterval(interval))
 .event-feed-body { flex: 1; }
 .event-feed-msg { font-size: 13px; }
 .event-feed-meta { display: flex; gap: 12px; margin-top: 2px; }
+
+/* Sysinfo card */
+.sysinfo-card { margin-bottom: 16px; }
+.sysinfo-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.sysinfo-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; font-family: var(--font-mono, monospace); color: var(--color-text-muted); }
+.sysinfo-loading { font-size: 13px; color: var(--color-text-muted); padding: 8px 0; }
+.sysinfo-gauges { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 24px; align-items: start; }
+.sysinfo-gauge { display: flex; flex-direction: column; gap: 6px; }
+.sysinfo-gauge-label { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
+.sysinfo-gauge-value { font-size: 20px; font-weight: 700; font-family: var(--font-mono, monospace); letter-spacing: normal; text-transform: none; }
+.sysinfo-gauge-track { height: 8px; background: var(--color-border, #e2e8f0); border-radius: 2px; overflow: hidden; }
+.sysinfo-gauge-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+.sysinfo-gauge-detail { font-size: 11px; color: var(--color-text-muted); font-family: var(--font-mono, monospace); }
+.sysinfo-ml { display: flex; flex-direction: column; gap: 8px; padding-left: 24px; border-left: 1px solid var(--color-border, #e2e8f0); min-width: 160px; }
+.sysinfo-ml-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; }
+.sysinfo-ml-lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
 </style>
