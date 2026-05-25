@@ -109,13 +109,13 @@
       <div style="font-size: 13px;">
         <div style="margin-bottom: 8px;">
           <span style="color: var(--color-text-muted);">Backend URL:</span>
-          <code style="margin-left: 8px; font-family: monospace; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">
+          <code style="margin-left: 8px; font-family: monospace; background: var(--color-surface-raised); border: 1px solid var(--color-border-bright); color: var(--color-primary); padding: 2px 8px; border-radius: 4px;">
             {{ apiUrl }}
           </code>
         </div>
         <div>
           <span style="color: var(--color-text-muted);">Admin Key:</span>
-          <code style="margin-left: 8px; font-family: monospace; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">
+          <code style="margin-left: 8px; font-family: monospace; background: var(--color-surface-raised); border: 1px solid var(--color-border-bright); color: var(--color-text-muted); padding: 2px 8px; border-radius: 4px;">
             {{ adminKey }}
           </code>
         </div>

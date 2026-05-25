@@ -153,6 +153,50 @@
       </div>
     </div>
 
+    <!-- ══ СИТУАЦІЙНИЙ АНАЛІЗ ════════════════════════════════════ -->
+    <div class="section-block" v-if="!loading || units.length">
+      <div class="section-heading">
+        <span class="section-title">Ситуаційний аналіз</span>
+        <InfoTip>
+          Автоматично сформований опис поточного стану флоту на основі реальних даних.
+          Оновлюється при кожному завантаженні сторінки.
+        </InfoTip>
+      </div>
+      <div class="section-desc">Що зараз відбувається в системі і що потрібно зробити.</div>
+      <div class="scenario-list">
+        <div
+          v-for="(s, i) in scenarios"
+          :key="i"
+          class="scenario-item"
+          :class="s.type"
+        >
+          <div class="scenario-icon">
+            <!-- critical -->
+            <svg v-if="s.type === 'critical'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <!-- warning -->
+            <svg v-else-if="s.type === 'warning'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <!-- ok -->
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div class="scenario-body">
+            <div class="scenario-title">{{ s.title }}</div>
+            <div class="scenario-desc">{{ s.desc }}</div>
+            <div class="scenario-units" v-if="s.units && s.units.length">
+              <RouterLink v-for="u in s.units" :key="u.id" :to="`/units/${u.id}`" class="scenario-unit-link">
+                {{ u.serial_no }}
+              </RouterLink>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ 3. ПОТРЕБУЄ УВАГИ ══════════════════════════════════════ -->
     <div class="section-block">
       <div class="section-heading">
@@ -382,6 +426,96 @@ const fleetScoreLabel = computed(() => {
   return 'Критичний стан'
 })
 
+// ── Scenarios ─────────────────────────────────────────────────
+
+function noun(n) { return n === 1 ? 'одиниця' : n < 5 ? 'одиниці' : 'одиниць' }
+
+const scenarios = computed(() => {
+  if (!units.value.length) return []
+  const result = []
+  const imm = units.value.filter(u => u.status === 'imminent')
+  const risk = units.value.filter(u => u.status === 'risk')
+
+  if (imm.length) {
+    result.push({
+      type: 'critical',
+      title: `${imm.length} ${noun(imm.length)} в КРИТИЧНОМУ стані — потрібне негайне ТО`,
+      desc: `Аномальність перевищила 70% або залишковий ресурс нижче 72 годин. Зупиніть навантаження або замініть несправний компонент.`,
+      units: imm.slice(0, 5),
+    })
+  }
+
+  const modeGroups = {}
+  units.value.filter(u => u.predicted_mode).forEach(u => {
+    if (!modeGroups[u.predicted_mode]) modeGroups[u.predicted_mode] = []
+    modeGroups[u.predicted_mode].push(u)
+  })
+  for (const [mode, us] of Object.entries(modeGroups)) {
+    result.push({
+      type: us.some(u => u.status === 'imminent') ? 'critical' : 'warning',
+      title: `Режим відмови «${mode}» виявлено на ${us.length} ${noun(us.length)}`,
+      desc: modeFailDesc(mode),
+      units: us.slice(0, 5),
+    })
+  }
+
+  const lowRul = units.value.filter(u => u.rul_hours != null && u.rul_hours < 168)
+    .sort((a, b) => a.rul_hours - b.rul_hours)
+  if (lowRul.length) {
+    const u = lowRul[0]
+    result.push({
+      type: 'warning',
+      title: `Найнижчий RUL у флоті: ${u.serial_no} — ${Math.round(u.rul_hours)} год (~${(u.rul_hours / 24).toFixed(1)} доби)`,
+      desc: `${u.rul_hours < 72 ? 'Критична ситуація — залишилось менше 3 діб.' : 'Рекомендується запланувати ТО протягом тижня.'} ${u.predicted_mode ? `Прогнозований режим: ${u.predicted_mode}.` : ''}`,
+      units: [],
+    })
+  }
+
+  const highAnomaly = units.value.filter(u => (u.anomaly_score ?? 0) >= 0.5 && u.status !== 'imminent')
+  if (highAnomaly.length && !imm.length) {
+    result.push({
+      type: 'warning',
+      title: `${highAnomaly.length} ${noun(highAnomaly.length)} з підвищеною аномальністю (≥ 50%)`,
+      desc: 'Поведінка суттєво відхиляється від норми. Рекомендується збільшити частоту контролю і перевірити фізичний стан обладнання.',
+      units: highAnomaly.slice(0, 4),
+    })
+  }
+
+  if (!result.length) {
+    result.push({
+      type: 'ok',
+      title: 'Флот у нормальному стані',
+      desc: `Усі ${units.value.length} одиниць обладнання працюють у штатному режимі. Аномалій і критичних відхилень не виявлено. Планова ML-перевірка кожні 5 хвилин.`,
+      units: [],
+    })
+  }
+
+  return result
+})
+
+function modeFailDesc(mode) {
+  const map = {
+    bearing_wear:      'Знос підшипників — підвищена вібрація і температура. Перевірте мащення і баланс ротора.',
+    imbalance:         'Дисбаланс ротора — характерна синусоїдальна вібрація на робочій частоті. Потрібне балансування.',
+    cavitation:        'Кавітація насоса — нерівномірний потік, удари тиску. Перевірте вхідний тиск і засмічення.',
+    winding_short:     'Міжвиткове замикання обмотки — нерівномірний струм фаз. Необхідна діагностика ізоляції.',
+    thermal_runaway:   'Тепловий розгін — температура зростає швидше норми. Перевірте вентиляцію і охолодження.',
+    fan_bearing_wear:  'Знос підшипника вентилятора — шум і вібрація. Плановий стандартний ремонт.',
+    ssd_endurance:     'Вичерпання ресурсу SSD — підвищена кількість помилок. Підготуйте резервну копію і заміну диску.',
+    psu_degradation:   'Деградація блоку живлення — нестабільна напруга. Замініть ДБЖ або вимірюйте напругу під навантаженням.',
+    vacuum_breach:     'Порушення вакууму — тиск вище норми. Терміново перевірте ущільнення і клапани.',
+    compressor_wear:   'Знос компресора — знижена продуктивність, зростання температури. Потрібне технічне обслуговування.',
+    filter_clog:       'Засмічення фільтра — перепад тиску. Заміна або очищення фільтруючого елемента.',
+    field_decoherence: 'Декогеренція поля — нестабільність квантових бітів. Перевірте екранування і температуру.',
+    tachyon_overflow:  'Переповнення тахіонного потоку — нетипова сигнатура. Діагностичний режим.',
+    containment_drift: 'Дрейф утримання — відхилення магнітного поля. Перекалібрування контролера.',
+    memory_pressure:   'Перевантаження RAM — висока утилізація. Перевірте запущені процеси, звільніть пам\'ять.',
+    cpu_overload:      'Перевантаження CPU — висока утилізація. Перевірте навантажені процеси.',
+    disk_full:         'Диск заповнюється — місце закінчується. Очистіть або розширте сховище.',
+  }
+  return map[mode] ?? `Виявлено режим відмови «${mode}». Перевірте відповідні канали телеметрії.`
+}
+
 // ── At-risk units ─────────────────────────────────────────────
 
 const atRiskUnits = computed(() =>
@@ -498,6 +632,57 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Scenario list */
+.scenario-list { display: flex; flex-direction: column; gap: 8px; }
+.scenario-item {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-bright);
+  background: var(--color-surface);
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.scenario-item.critical {
+  border-color: var(--color-imminent-border);
+  background: var(--color-imminent-bg);
+  box-shadow: 0 0 18px var(--color-imminent-glow), inset 0 0 0 1px var(--color-imminent-border);
+}
+.scenario-item.warning {
+  border-color: var(--color-risk-border);
+  background: var(--color-risk-bg);
+}
+.scenario-item.ok {
+  border-color: var(--color-ok-border);
+  background: var(--color-ok-bg);
+}
+.scenario-icon {
+  width: 22px; height: 22px; flex-shrink: 0; margin-top: 1px;
+}
+.scenario-item.critical .scenario-icon { color: var(--color-imminent); }
+.scenario-item.warning  .scenario-icon { color: var(--color-risk); }
+.scenario-item.ok       .scenario-icon { color: var(--color-ok); }
+.scenario-icon svg { width: 100%; height: 100%; }
+.scenario-body { flex: 1; }
+.scenario-title {
+  font-size: 13px; font-weight: 700; color: var(--color-text); margin-bottom: 4px;
+}
+.scenario-item.critical .scenario-title { color: var(--color-imminent); }
+.scenario-item.warning  .scenario-title { color: var(--color-risk); }
+.scenario-item.ok       .scenario-title { color: var(--color-ok); }
+.scenario-desc { font-size: 12px; color: var(--color-text-muted); line-height: 1.65; }
+.scenario-units { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.scenario-unit-link {
+  font-size: 11px; font-family: var(--font-mono); font-weight: 600;
+  padding: 2px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-bright);
+  background: var(--color-surface-raised);
+  color: var(--color-primary);
+  transition: background 0.15s, color 0.15s;
+}
+.scenario-unit-link:hover { background: var(--color-primary-dim); color: var(--color-accent); }
+
 /* Section blocks */
 .section-block { margin-bottom: 28px; }
 
