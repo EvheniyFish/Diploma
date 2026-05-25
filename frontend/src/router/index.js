@@ -10,6 +10,7 @@ const routes = [
   { path: '/events', name: 'events', component: () => import('../views/EventsView.vue') },
   { path: '/analysis', name: 'analysis', component: () => import('../views/AnalysisView.vue') },
   { path: '/settings', name: 'settings', component: () => import('../views/SettingsView.vue') },
+  { path: '/help', name: 'help', component: () => import('../views/HelpView.vue') },
 ]
 
 export default createRouter({ history: createWebHistory(), routes })

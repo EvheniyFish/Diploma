@@ -3,315 +3,328 @@
     <div class="page-header">
       <h1 class="page-title">Аналіз системи</h1>
       <div class="page-actions">
-        <span style="font-size: 12px; color: var(--color-text-muted);">{{ lastRefreshLabel }}</span>
+        <span style="font-size: 11px; color: var(--color-text-muted); font-family: var(--font-mono);">{{ lastRefreshLabel }}</span>
         <button class="time-range-btn active" @click="load" :disabled="loading" style="padding: 5px 14px;">
           Оновити
         </button>
       </div>
     </div>
 
-    <div v-if="loading && !units.length" class="loading-state">Завантаження...</div>
-
-    <!-- Local server hardware monitor -->
-    <div class="card sysinfo-card">
-      <div class="sysinfo-header">
-        <div class="card-title" style="margin-bottom: 0;">Поточний сервер</div>
-        <div class="sysinfo-meta">
-          <span v-if="sysinfo">{{ sysinfo.metrics.hostname }}</span>
-          <span v-if="sysinfo" style="opacity: 0.5;">·</span>
-          <span v-if="sysinfo">{{ sysinfo.metrics.cpu_count }} ядер</span>
-          <span v-if="sysinfo" style="opacity: 0.5;">·</span>
-          <span v-if="sysinfo">{{ sysinfo.metrics.ram_total_mb >= 1024 ? (sysinfo.metrics.ram_total_mb / 1024).toFixed(0) + ' GB' : sysinfo.metrics.ram_total_mb + ' MB' }} RAM</span>
-          <StatusBadge v-if="sysinfo?.health" :status="sysinfo.health.status" size="sm" style="margin-left: 8px;" />
-        </div>
+    <!-- ══ 1. ПОТОЧНИЙ СЕРВЕР ══════════════════════════════════════ -->
+    <div class="section-block">
+      <div class="section-heading">
+        <span class="section-title">Поточний сервер</span>
+        <InfoTip>
+          Реальні метрики машини, на якій запущено бекенд. Дані оновлюються кожні 5 секунд.
+          Метрики також надходять у загальний ML-пайплайн — через 5–10 хвилин накопичення
+          система розрахує оцінку аномальності та залишковий ресурс (RUL).
+        </InfoTip>
+      </div>
+      <div class="section-desc">
+        Навантаження на залізо в реальному часі — RAM, CPU, диск.
+        Зелений — норма, помаранчевий — підвищене навантаження, червоний — критичний рівень.
       </div>
 
-      <div v-if="!sysinfo" class="sysinfo-loading">Зчитування метрик...</div>
-      <div v-else class="sysinfo-gauges">
+      <div class="card">
+        <div v-if="!sysinfo" class="empty-state">
+          <span class="empty-icon">...</span>
+          <span>Зчитування метрик...</span>
+        </div>
+        <div v-else class="sysinfo-body">
+          <div class="sysinfo-host">
+            <span class="sysinfo-hostname">{{ sysinfo.metrics.hostname }}</span>
+            <span class="sysinfo-spec">{{ sysinfo.metrics.cpu_count }}-ядерний CPU</span>
+            <span class="sysinfo-spec">{{ mbToGb(sysinfo.metrics.ram_total_mb) }} RAM</span>
+            <StatusBadge v-if="sysinfo.health" :status="sysinfo.health.status" size="sm" />
+          </div>
 
-        <!-- RAM -->
-        <div class="sysinfo-gauge">
-          <div class="sysinfo-gauge-label">
-            <span>RAM</span>
-            <span class="sysinfo-gauge-value" :style="{ color: gaugeColor(sysinfo.metrics.ram_used_pct, 85, 95) }">
-              {{ sysinfo.metrics.ram_used_pct }}%
-            </span>
-          </div>
-          <div class="sysinfo-gauge-track">
-            <div
-              class="sysinfo-gauge-fill"
-              :style="{ width: sysinfo.metrics.ram_used_pct + '%', background: gaugeColor(sysinfo.metrics.ram_used_pct, 85, 95) }"
-            ></div>
-          </div>
-          <div class="sysinfo-gauge-detail">
-            {{ sysinfo.metrics.ram_total_mb - sysinfo.metrics.ram_free_mb >= 1024
-                ? ((sysinfo.metrics.ram_total_mb - sysinfo.metrics.ram_free_mb) / 1024).toFixed(1) + ' GB'
-                : (sysinfo.metrics.ram_total_mb - sysinfo.metrics.ram_free_mb) + ' MB' }} / {{
-               sysinfo.metrics.ram_total_mb >= 1024
-                ? (sysinfo.metrics.ram_total_mb / 1024).toFixed(0) + ' GB'
-                : sysinfo.metrics.ram_total_mb + ' MB'
-            }}
+          <div class="sysinfo-gauges">
+            <div class="sysinfo-gauge">
+              <div class="sysinfo-gauge-top">
+                <span class="sysinfo-gauge-name">RAM</span>
+                <span class="sysinfo-gauge-val" :style="{ color: gaugeColor(sysinfo.metrics.ram_used_pct, 85, 95) }">
+                  {{ sysinfo.metrics.ram_used_pct }}%
+                </span>
+              </div>
+              <div class="gauge-track">
+                <div class="gauge-fill" :style="{ width: sysinfo.metrics.ram_used_pct + '%', background: gaugeColor(sysinfo.metrics.ram_used_pct, 85, 95) }"></div>
+              </div>
+              <div class="sysinfo-gauge-sub">{{ mbToGb(sysinfo.metrics.ram_total_mb - sysinfo.metrics.ram_free_mb) }} / {{ mbToGb(sysinfo.metrics.ram_total_mb) }} використано</div>
+            </div>
+
+            <div class="sysinfo-gauge">
+              <div class="sysinfo-gauge-top">
+                <span class="sysinfo-gauge-name">CPU</span>
+                <span class="sysinfo-gauge-val" :style="{ color: gaugeColor(sysinfo.metrics.cpu_load_pct ?? 0, 80, 95) }">
+                  {{ sysinfo.metrics.cpu_load_pct != null ? sysinfo.metrics.cpu_load_pct + '%' : '—' }}
+                </span>
+              </div>
+              <div class="gauge-track">
+                <div class="gauge-fill" :style="{ width: (sysinfo.metrics.cpu_load_pct ?? 0) + '%', background: gaugeColor(sysinfo.metrics.cpu_load_pct ?? 0, 80, 95) }"></div>
+              </div>
+              <div class="sysinfo-gauge-sub">Поточне завантаження ({{ sysinfo.metrics.cpu_count }} ядер)</div>
+            </div>
+
+            <div class="sysinfo-gauge">
+              <div class="sysinfo-gauge-top">
+                <span class="sysinfo-gauge-name">Диск</span>
+                <span class="sysinfo-gauge-val" :style="{ color: gaugeColor(sysinfo.metrics.disk_used_pct ?? 0, 85, 95) }">
+                  {{ sysinfo.metrics.disk_used_pct != null ? sysinfo.metrics.disk_used_pct + '%' : '—' }}
+                </span>
+              </div>
+              <div class="gauge-track">
+                <div class="gauge-fill" :style="{ width: (sysinfo.metrics.disk_used_pct ?? 0) + '%', background: gaugeColor(sysinfo.metrics.disk_used_pct ?? 0, 85, 95) }"></div>
+              </div>
+              <div class="sysinfo-gauge-sub">{{ sysinfo.metrics.disk_used_pct != null ? (100 - sysinfo.metrics.disk_used_pct) + '% вільно' : 'недоступно' }}</div>
+            </div>
+
+            <div class="sysinfo-ml-block">
+              <div class="sysinfo-ml-title">ML-оцінка
+                <InfoTip>
+                  Розраховується автоматично кожні 5 хвилин на основі накопичених метрик.
+                  При першому запуску потрібно зачекати ~10 хвилин.
+                </InfoTip>
+              </div>
+              <template v-if="sysinfo.health && (sysinfo.health.anomaly_score > 0 || sysinfo.health.rul_hours != null)">
+                <div class="ml-metric-row">
+                  <span class="ml-metric-lbl">Аномалія</span>
+                  <span class="ml-metric-val" :style="{ color: anomalyColor(sysinfo.health.anomaly_score) }">
+                    {{ (sysinfo.health.anomaly_score * 100).toFixed(0) }}%
+                  </span>
+                </div>
+                <div class="ml-metric-row" v-if="sysinfo.health.rul_hours != null">
+                  <span class="ml-metric-lbl">RUL</span>
+                  <span class="ml-metric-val" :style="{ color: rulColor(sysinfo.health.rul_hours) }">
+                    {{ Math.round(sysinfo.health.rul_hours) }} год
+                  </span>
+                </div>
+                <div class="ml-metric-row" v-if="sysinfo.health.predicted_mode">
+                  <span class="ml-metric-lbl">Режим</span>
+                  <code class="ml-metric-code">{{ sysinfo.health.predicted_mode }}</code>
+                </div>
+              </template>
+              <div v-else class="ml-pending">накопичення даних...</div>
+            </div>
           </div>
         </div>
-
-        <!-- CPU -->
-        <div class="sysinfo-gauge">
-          <div class="sysinfo-gauge-label">
-            <span>CPU</span>
-            <span class="sysinfo-gauge-value" :style="{ color: gaugeColor(sysinfo.metrics.cpu_load_pct, 80, 95) }">
-              {{ sysinfo.metrics.cpu_load_pct != null ? sysinfo.metrics.cpu_load_pct + '%' : '—' }}
-            </span>
-          </div>
-          <div class="sysinfo-gauge-track">
-            <div
-              class="sysinfo-gauge-fill"
-              :style="{ width: (sysinfo.metrics.cpu_load_pct ?? 0) + '%', background: gaugeColor(sysinfo.metrics.cpu_load_pct ?? 0, 80, 95) }"
-            ></div>
-          </div>
-          <div class="sysinfo-gauge-detail">{{ sysinfo.metrics.cpu_count }} логічних ядер</div>
-        </div>
-
-        <!-- Disk -->
-        <div class="sysinfo-gauge">
-          <div class="sysinfo-gauge-label">
-            <span>Диск</span>
-            <span class="sysinfo-gauge-value" :style="{ color: gaugeColor(sysinfo.metrics.disk_used_pct ?? 0, 85, 95) }">
-              {{ sysinfo.metrics.disk_used_pct != null ? sysinfo.metrics.disk_used_pct + '%' : '—' }}
-            </span>
-          </div>
-          <div class="sysinfo-gauge-track">
-            <div
-              class="sysinfo-gauge-fill"
-              :style="{ width: (sysinfo.metrics.disk_used_pct ?? 0) + '%', background: gaugeColor(sysinfo.metrics.disk_used_pct ?? 0, 85, 95) }"
-            ></div>
-          </div>
-          <div class="sysinfo-gauge-detail">{{ sysinfo.metrics.disk_used_pct != null ? (100 - sysinfo.metrics.disk_used_pct) + '% вільно' : 'н/д' }}</div>
-        </div>
-
-        <!-- ML assessment -->
-        <div class="sysinfo-ml" v-if="sysinfo.health">
-          <div class="sysinfo-ml-row">
-            <span class="sysinfo-ml-lbl">Аномалія</span>
-            <span :style="{ color: anomalyColor(sysinfo.health.anomaly_score), fontWeight: '700' }">
-              {{ (sysinfo.health.anomaly_score * 100).toFixed(0) }}%
-            </span>
-          </div>
-          <div class="sysinfo-ml-row" v-if="sysinfo.health.rul_hours != null">
-            <span class="sysinfo-ml-lbl">RUL</span>
-            <span :style="{ color: rulColor(sysinfo.health.rul_hours), fontWeight: '700' }">
-              {{ Math.round(sysinfo.health.rul_hours) }} год
-            </span>
-          </div>
-          <div class="sysinfo-ml-row" v-if="sysinfo.health.predicted_mode">
-            <span class="sysinfo-ml-lbl">Прогноз</span>
-            <code style="font-size: 11px;">{{ sysinfo.health.predicted_mode }}</code>
-          </div>
-          <div v-if="sysinfo.health.rul_hours == null && !sysinfo.health.predicted_mode" style="font-size: 11px; color: var(--color-text-muted);">
-            ML-оцінка накопичується (~5 хв)
-          </div>
-        </div>
-        <div class="sysinfo-ml" v-else>
-          <div style="font-size: 11px; color: var(--color-text-muted); padding-top: 4px;">ML-оцінка накопичується (~5 хв)</div>
-        </div>
-
       </div>
     </div>
 
-    <template v-if="!loading || units.length">
-
-      <!-- Row 1: fleet score + status counts + category breakdown -->
-      <div class="analysis-grid-top">
-
-        <!-- Fleet Health Score -->
-        <div class="card analysis-score-card">
-          <div class="card-title">Загальне здоров'я флоту</div>
-          <div class="score-ring-wrap">
-            <svg viewBox="0 0 120 120" width="120" height="120">
-              <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="12"/>
-              <circle
-                cx="60" cy="60" r="50" fill="none"
-                :stroke="fleetScoreColor"
-                stroke-width="12"
-                stroke-linecap="round"
-                :stroke-dasharray="`${fleetScore * 3.14159} 314.159`"
-                transform="rotate(-90 60 60)"
-                style="transition: stroke-dasharray 0.6s ease;"
-              />
-              <text x="60" y="56" text-anchor="middle" font-size="22" font-weight="700" :fill="fleetScoreColor">
-                {{ Math.round(fleetScore) }}
-              </text>
-              <text x="60" y="72" text-anchor="middle" font-size="10" fill="#94a3b8">з 100</text>
-            </svg>
-          </div>
-          <div style="font-size: 12px; color: var(--color-text-muted); margin-top: 8px; text-align: center;">
-            {{ fleetScoreLabel }}
-          </div>
-        </div>
-
-        <!-- Status counts -->
-        <div class="card">
-          <div class="card-title">Статус флоту</div>
-          <div class="status-bars">
-            <div v-for="s in statusStats" :key="s.key" class="status-bar-row">
-              <span class="status-bar-label">{{ s.label }}</span>
-              <div class="status-bar-track">
-                <div class="status-bar-fill" :style="{ width: getBarPct(s.count) + '%', background: s.color }"></div>
-              </div>
-              <span class="status-bar-count" :style="{ color: s.color }">{{ s.count }}</span>
-            </div>
-          </div>
-          <div style="margin-top: 16px; font-size: 12px; color: var(--color-text-muted);">
-            Всього вузлів: <strong>{{ units.length }}</strong>
-          </div>
-        </div>
-
-        <!-- By category -->
-        <div class="card">
-          <div class="card-title">За категорією</div>
-          <table class="analysis-table">
-            <thead>
-              <tr>
-                <th>Категорія</th>
-                <th>Вузлів</th>
-                <th>Серед. аномалія</th>
-                <th>Ризик/Крит</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="cat in categoryStats" :key="cat.category">
-                <td><span class="cat-badge">{{ catLabel(cat.category) }}</span></td>
-                <td>{{ cat.count }}</td>
-                <td>
-                  <span :style="{ color: anomalyColor(cat.avgAnomaly), fontWeight: '600' }">
-                    {{ (cat.avgAnomaly * 100).toFixed(0) }}%
-                  </span>
-                </td>
-                <td>
-                  <span v-if="cat.atRisk > 0" :style="{ color: '#f59e0b', fontWeight: '600' }">{{ cat.atRisk }}</span>
-                  <span v-else style="color: var(--color-text-muted);">0</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+    <!-- ══ 2. СТАН ФЛОТУ ══════════════════════════════════════════ -->
+    <div class="section-block">
+      <div class="section-heading">
+        <span class="section-title">Стан флоту</span>
+        <InfoTip>
+          Зведений знімок усього обладнання. Статус присвоюється автоматично
+          на основі оцінки аномальності та RUL (залишкового ресурсу).
+        </InfoTip>
+      </div>
+      <div class="section-desc">
+        Скільки одиниць у кожному стані прямо зараз.
+        Статус оновлюється кожні 5 хвилин планувальником ML.
       </div>
 
-      <!-- Row 2: anomaly ranking + RUL distribution -->
-      <div class="analysis-grid-mid">
-
-        <!-- Anomaly ranking -->
-        <div class="card">
-          <div class="card-title">Рейтинг аномальності вузлів</div>
-          <div class="anomaly-list">
-            <div v-for="u in anomalySorted" :key="u.id" class="anomaly-row">
-              <RouterLink :to="`/units/${u.id}`" class="anomaly-serial">{{ u.serial_no }}</RouterLink>
-              <span class="anomaly-model">{{ u.model_code }}</span>
-              <div class="anomaly-bar-track">
-                <div
-                  class="anomaly-bar-fill"
-                  :style="{ width: (u.anomaly_score * 100) + '%', background: anomalyColor(u.anomaly_score) }"
-                ></div>
-              </div>
-              <span class="anomaly-score" :style="{ color: anomalyColor(u.anomaly_score) }">
-                {{ (u.anomaly_score * 100).toFixed(0) }}%
-              </span>
-              <StatusBadge :status="u.status" size="sm" />
-            </div>
-          </div>
+      <div v-if="loading && !units.length" class="empty-state">Завантаження...</div>
+      <div v-else class="fleet-stat-row">
+        <div class="fleet-stat-card fleet-stat-total">
+          <div class="fleet-stat-num">{{ units.length }}</div>
+          <div class="fleet-stat-lbl">Всього одиниць</div>
         </div>
+        <div class="fleet-stat-card fleet-stat-ok">
+          <div class="fleet-stat-num" style="color: var(--color-ok);">{{ statusCount('ok') }}</div>
+          <div class="fleet-stat-lbl">OK — норма</div>
+          <div class="fleet-stat-hint">Аномалія &lt; 30%, RUL &gt; 168 год</div>
+        </div>
+        <div class="fleet-stat-card fleet-stat-risk">
+          <div class="fleet-stat-num" style="color: var(--color-risk);">{{ statusCount('risk') }}</div>
+          <div class="fleet-stat-lbl">RISK — під наглядом</div>
+          <div class="fleet-stat-hint">Аномалія 30–70% або RUL 72–168 год</div>
+        </div>
+        <div class="fleet-stat-card fleet-stat-imminent">
+          <div class="fleet-stat-num" style="color: var(--color-imminent);">{{ statusCount('imminent') }}</div>
+          <div class="fleet-stat-lbl">IMMINENT — критично</div>
+          <div class="fleet-stat-hint">Аномалія &gt; 70% або RUL &lt; 72 год</div>
+        </div>
+        <div class="fleet-stat-card fleet-stat-score">
+          <div class="fleet-stat-num" :style="{ color: fleetScoreColor }">{{ Math.round(fleetScore) }}<span style="font-size: 16px; font-weight: 400;">/100</span></div>
+          <div class="fleet-stat-lbl">Здоров'я флоту</div>
+          <div class="fleet-stat-hint">{{ fleetScoreLabel }}</div>
+        </div>
+      </div>
+    </div>
 
-        <!-- RUL Distribution -->
-        <div class="card">
-          <div class="card-title">Розподіл залишкового ресурсу (RUL)</div>
-          <div class="rul-buckets">
-            <div v-for="b in rulBuckets" :key="b.label" class="rul-bucket">
-              <div class="rul-bucket-bar-wrap">
-                <div
-                  class="rul-bucket-bar"
-                  :style="{ height: bucketBarHeight(b.count) + 'px', background: b.color }"
-                ></div>
-              </div>
-              <div class="rul-bucket-label">{{ b.label }}</div>
-              <div class="rul-bucket-count" :style="{ color: b.color }">{{ b.count }}</div>
-            </div>
+    <!-- ══ 3. ПОТРЕБУЄ УВАГИ ══════════════════════════════════════ -->
+    <div class="section-block">
+      <div class="section-heading">
+        <span class="section-title">Потребує уваги</span>
+        <InfoTip>
+          Тільки ті одиниці, у яких статус RISK або IMMINENT.
+          RISK — спостерігайте і плануйте ТО. IMMINENT — негайне втручання.
+        </InfoTip>
+      </div>
+      <div class="section-desc">
+        Одиниці обладнання з підвищеною аномальністю або низьким залишковим ресурсом.
+        Натисніть на серійний номер, щоб побачити повну деталізацію та графіки телеметрії.
+      </div>
+
+      <div class="card">
+        <div v-if="atRiskUnits.length === 0" class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--color-ok);margin-bottom:8px;">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Всі одиниці в нормі — проблем не виявлено</span>
+        </div>
+        <div v-else>
+          <div class="attention-header">
+            <span>Серійний №</span>
+            <span>Модель</span>
+            <span>Статус</span>
+            <span>
+              Аномалія
+              <InfoTip align="center">
+                Відсоток відхилення від норми. 0–30% — норма.
+                30–70% — підвищена, 70–100% — критична аномалія.
+              </InfoTip>
+            </span>
+            <span>
+              RUL, год
+              <InfoTip align="center">
+                Remaining Useful Life — розрахунковий залишок часу до відмови.
+                Менше 72 год — критично, 72–168 год — під наглядом.
+              </InfoTip>
+            </span>
+            <span>Прогноз відмови</span>
+            <span></span>
           </div>
-          <div style="margin-top: 12px; font-size: 12px; color: var(--color-text-muted);">
-            Середній RUL: <strong>{{ avgRulLabel }}</strong>
+          <div v-for="u in atRiskUnits" :key="u.id" class="attention-row" :class="u.status">
+            <span class="attention-serial">{{ u.serial_no }}</span>
+            <span class="attention-model">{{ u.model_code }}</span>
+            <StatusBadge :status="u.status" size="sm" />
+            <span :style="{ color: anomalyColor(u.anomaly_score), fontWeight: '600', fontFamily: 'var(--font-mono)' }">
+              {{ (u.anomaly_score * 100).toFixed(0) }}%
+            </span>
+            <span :style="{ color: rulColor(u.rul_hours), fontWeight: '600', fontFamily: 'var(--font-mono)' }">
+              {{ u.rul_hours != null ? Math.round(u.rul_hours) : '—' }}
+            </span>
+            <span style="font-size: 12px;">
+              <code v-if="u.predicted_mode" style="font-size: 11px; color: var(--color-risk);">{{ u.predicted_mode }}</code>
+              <span v-else style="color: var(--color-text-faint);">—</span>
+            </span>
+            <RouterLink :to="`/units/${u.id}`" class="btn-detail">Деталі</RouterLink>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Row 3: predicted modes + recent critical events -->
-      <div class="analysis-grid-bot">
+    <!-- ══ 4. РЕЙТИНГ АНОМАЛЬНОСТІ ════════════════════════════════ -->
+    <div class="section-block">
+      <div class="section-heading">
+        <span class="section-title">Рейтинг аномальності</span>
+        <InfoTip>
+          Усе обладнання, відсортоване від найбільш проблемного до найменш.
+          Оцінка розраховується моделлю IsolationForest кожні 5 хвилин
+          на основі останніх 6 годин телеметрії (360 точок на канал).
+        </InfoTip>
+      </div>
+      <div class="section-desc">
+        Чим вищий відсоток — тим сильніше поведінка відрізняється від нормальної.
+        До 30% — зелений (норма), 30–70% — помаранчевий (спостереження), понад 70% — червоний (критично).
+      </div>
 
-        <!-- Predicted failure modes -->
-        <div class="card">
-          <div class="card-title">Прогнозовані режими відмов</div>
-          <div v-if="predictedModes.length === 0" style="font-size: 13px; color: var(--color-text-muted); padding: 12px 0;">
-            Активних прогнозів немає — всі вузли в нормі
+      <div class="card">
+        <div v-if="!units.length" class="empty-state">Немає даних</div>
+        <div v-else class="anomaly-list">
+          <div v-for="u in anomalySorted" :key="u.id" class="anomaly-row">
+            <RouterLink :to="`/units/${u.id}`" class="anomaly-serial">{{ u.serial_no }}</RouterLink>
+            <span class="anomaly-cat">{{ catLabel(u.category) }}</span>
+            <div class="anomaly-bar-wrap">
+              <div class="anomaly-bar-fill" :style="{ width: (u.anomaly_score * 100) + '%', background: anomalyColor(u.anomaly_score) }"></div>
+            </div>
+            <span class="anomaly-pct" :style="{ color: anomalyColor(u.anomaly_score) }">
+              {{ (u.anomaly_score * 100).toFixed(0) }}%
+            </span>
+            <StatusBadge :status="u.status" size="sm" />
           </div>
-          <table v-else class="analysis-table">
-            <thead>
-              <tr>
-                <th>Вузол</th>
-                <th>Режим відмови</th>
-                <th>Впевненість</th>
-                <th>Аномалія</th>
-                <th>RUL, год</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="u in predictedModes" :key="u.id">
-                <td>
-                  <RouterLink :to="`/units/${u.id}`" style="font-weight: 500;">{{ u.serial_no }}</RouterLink>
-                </td>
-                <td><code style="font-size: 12px;">{{ u.predicted_mode }}</code></td>
-                <td>
-                  {{ u.predicted_mode_conf != null ? (u.predicted_mode_conf * 100).toFixed(0) + '%' : '—' }}
-                </td>
-                <td :style="{ color: anomalyColor(u.anomaly_score), fontWeight: '600' }">
-                  {{ (u.anomaly_score * 100).toFixed(0) }}%
-                </td>
-                <td :style="{ color: rulColor(u.rul_hours), fontWeight: '600' }">
-                  {{ u.rul_hours != null ? Math.round(u.rul_hours) : '—' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
         </div>
+      </div>
+    </div>
 
-        <!-- Recent critical events -->
-        <div class="card">
-          <div class="card-title">Останні критичні події (48 год)</div>
-          <div v-if="criticalEvents.length === 0" style="font-size: 13px; color: var(--color-text-muted); padding: 12px 0;">
-            Критичних подій не зафіксовано
+    <!-- ══ 5. РОЗПОДІЛ ЗАЛИШКОВОГО РЕСУРСУ ════════════════════════ -->
+    <div class="section-block">
+      <div class="section-heading">
+        <span class="section-title">Розподіл залишкового ресурсу (RUL)</span>
+        <InfoTip align="left">
+          RUL (Remaining Useful Life) — скільки годин залишилось до потенційної відмови.
+          Розраховується регресором GradientBoosting з квантильними оцінками.
+          Якщо ML ще не накопичив достатньо даних — показує «невідомо».
+        </InfoTip>
+      </div>
+      <div class="section-desc">
+        Скільки одиниць обладнання потрапляє в кожен діапазон залишкового ресурсу.
+        Більшість у зеленій зоні — флот у хорошому стані.
+      </div>
+
+      <div class="card">
+        <div v-if="noRulData" class="empty-state">
+          <span>RUL ще не розраховано — ML-планувальник запуститься через 5 хвилин після накопичення телеметрії</span>
+        </div>
+        <div v-else class="rul-grid">
+          <div v-for="b in rulBuckets" :key="b.label" class="rul-bucket">
+            <div class="rul-bucket-bar-area">
+              <div class="rul-bucket-bar" :style="{ height: bucketBarHeight(b.count) + 'px', background: b.color }"></div>
+            </div>
+            <div class="rul-bucket-count" :style="{ color: b.count > 0 ? b.color : 'var(--color-text-faint)' }">{{ b.count }}</div>
+            <div class="rul-bucket-label">{{ b.label }}</div>
+            <div class="rul-bucket-hint">{{ b.hint }}</div>
           </div>
-          <div v-else class="event-feed">
-            <div v-for="ev in criticalEvents" :key="ev.id" class="event-feed-row" :class="ev.severity">
-              <div class="event-feed-dot" :class="ev.severity"></div>
-              <div class="event-feed-body">
-                <div class="event-feed-msg">{{ ev.message }}</div>
-                <div class="event-feed-meta">
-                  <RouterLink v-if="ev.unit_id" :to="`/units/${ev.unit_id}`" style="font-size: 11px;">
-                    {{ getUnitSerial(ev.unit_id) }}
-                  </RouterLink>
-                  <span style="font-size: 11px; color: var(--color-text-muted);">{{ formatDateTime(ev.ts) }}</span>
-                </div>
+        </div>
+        <div v-if="!noRulData" class="rul-avg-row">
+          Середній RUL по флоту: <strong>{{ avgRulLabel }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 6. КРИТИЧНІ ПОДІЇ ═══════════════════════════════════════ -->
+    <div class="section-block">
+      <div class="section-heading">
+        <span class="section-title">Критичні події за 48 годин</span>
+        <InfoTip align="left">
+          Автоматично фіксуються при зміні статусу обладнання або виявленні нового
+          режиму відмови. Також включають ручно додані події зі сторінки «Журнал подій».
+        </InfoTip>
+      </div>
+      <div class="section-desc">
+        Хронологія значущих подій: зміна статусу, виявлення аномалій, попередження.
+        Повна історія — у розділі «Журнал подій».
+      </div>
+
+      <div class="card">
+        <div v-if="recentCritical.length === 0" class="empty-state">
+          Критичних подій за останні 48 годин не зафіксовано
+        </div>
+        <div v-else class="event-list">
+          <div v-for="ev in recentCritical" :key="ev.id" class="event-row">
+            <div class="event-dot" :class="ev.severity"></div>
+            <div class="event-body">
+              <div class="event-msg">{{ ev.message }}</div>
+              <div class="event-meta">
+                <RouterLink v-if="ev.unit_id" :to="`/units/${ev.unit_id}`">{{ getSerial(ev.unit_id) }}</RouterLink>
+                <span>{{ formatDt(ev.ts) }}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-    </template>
   </div>
 </template>
-
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import StatusBadge from '../components/StatusBadge.vue'
+import InfoTip from '../components/InfoTip.vue'
 import { unitsApi, eventsApi, sysApi } from '../api/index.js'
 
 const units = ref([])
@@ -322,14 +335,10 @@ const lastRefreshLabel = ref('—')
 let interval = null
 let sysInterval = null
 
-// ── Data loading ─────────────────────────────────────────────
+// ── Load ─────────────────────────────────────────────────────
 
 async function loadSysinfo() {
-  try {
-    sysinfo.value = await sysApi.info()
-  } catch {
-    // silently keep last known value
-  }
+  try { sysinfo.value = await sysApi.info() } catch {}
 }
 
 async function load() {
@@ -341,7 +350,7 @@ async function load() {
     ])
     units.value = Array.isArray(u) ? u : []
     events.value = Array.isArray(ev) ? ev : (ev?.items ?? [])
-    lastRefreshLabel.value = 'Оновлено: ' + new Intl.DateTimeFormat('uk-UA', {
+    lastRefreshLabel.value = 'оновлено ' + new Intl.DateTimeFormat('uk-UA', {
       hour: '2-digit', minute: '2-digit', second: '2-digit'
     }).format(new Date())
   } finally {
@@ -349,19 +358,20 @@ async function load() {
   }
 }
 
-// ── Fleet health score ────────────────────────────────────────
+// ── Fleet stats ───────────────────────────────────────────────
+
+function statusCount(s) {
+  return units.value.filter(u => u.status === s).length
+}
 
 const fleetScore = computed(() => {
   if (!units.value.length) return 0
-  const sum = units.value.reduce((acc, u) => acc + (1 - (u.anomaly_score ?? 0)), 0)
-  return (sum / units.value.length) * 100
+  return units.value.reduce((acc, u) => acc + (1 - (u.anomaly_score ?? 0)), 0) / units.value.length * 100
 })
 
 const fleetScoreColor = computed(() => {
   const s = fleetScore.value
-  if (s >= 75) return '#16a34a'
-  if (s >= 50) return '#f59e0b'
-  return '#dc2626'
+  return s >= 75 ? 'var(--color-ok)' : s >= 50 ? 'var(--color-risk)' : 'var(--color-imminent)'
 })
 
 const fleetScoreLabel = computed(() => {
@@ -372,42 +382,17 @@ const fleetScoreLabel = computed(() => {
   return 'Критичний стан'
 })
 
-// ── Status stats ──────────────────────────────────────────────
+// ── At-risk units ─────────────────────────────────────────────
 
-const statusStats = computed(() => {
-  const counts = { ok: 0, risk: 0, imminent: 0 }
-  units.value.forEach(u => { if (counts[u.status] != null) counts[u.status]++ })
-  return [
-    { key: 'ok', label: 'Норма', count: counts.ok, color: '#16a34a' },
-    { key: 'risk', label: 'Ризик', count: counts.risk, color: '#f59e0b' },
-    { key: 'imminent', label: 'Критично', count: counts.imminent, color: '#dc2626' },
-  ]
-})
-
-function getBarPct(count) {
-  const total = units.value.length || 1
-  return Math.round((count / total) * 100)
-}
-
-// ── Category stats ────────────────────────────────────────────
-
-const categoryStats = computed(() => {
-  const map = {}
-  units.value.forEach(u => {
-    const cat = u.category || 'unknown'
-    if (!map[cat]) map[cat] = { category: cat, count: 0, totalAnomaly: 0, atRisk: 0 }
-    map[cat].count++
-    map[cat].totalAnomaly += u.anomaly_score ?? 0
-    if (u.status === 'risk' || u.status === 'imminent') map[cat].atRisk++
-  })
-  return Object.values(map)
-    .map(c => ({ ...c, avgAnomaly: c.count ? c.totalAnomaly / c.count : 0 }))
-    .sort((a, b) => b.avgAnomaly - a.avgAnomaly)
-})
-
-function catLabel(cat) {
-  return { compute: 'Обчислення', rotary: 'Обертові', cryo: 'Кріогенні', experimental: 'Експеримент.' }[cat] ?? cat
-}
+const atRiskUnits = computed(() =>
+  units.value
+    .filter(u => u.status === 'risk' || u.status === 'imminent')
+    .sort((a, b) => {
+      if (a.status === 'imminent' && b.status !== 'imminent') return -1
+      if (b.status === 'imminent' && a.status !== 'imminent') return 1
+      return (b.anomaly_score ?? 0) - (a.anomaly_score ?? 0)
+    })
+)
 
 // ── Anomaly ranking ───────────────────────────────────────────
 
@@ -415,29 +400,33 @@ const anomalySorted = computed(() =>
   [...units.value].sort((a, b) => (b.anomaly_score ?? 0) - (a.anomaly_score ?? 0))
 )
 
-// ── RUL distribution buckets ──────────────────────────────────
+// ── RUL buckets ───────────────────────────────────────────────
 
 const rulBuckets = computed(() => {
-  const buckets = [
-    { label: '< 72 год', min: 0, max: 72, color: '#dc2626', count: 0 },
-    { label: '72–168 год', min: 72, max: 168, color: '#f59e0b', count: 0 },
-    { label: '168–720 год', min: 168, max: 720, color: '#3b82f6', count: 0 },
-    { label: '> 720 год', min: 720, max: Infinity, color: '#16a34a', count: 0 },
-    { label: 'Невідомо', min: null, max: null, color: '#94a3b8', count: 0 },
+  const bs = [
+    { label: '< 72 год', hint: 'Критично', min: 0, max: 72, color: 'var(--color-imminent)', count: 0 },
+    { label: '72–168 год', hint: 'Під наглядом', min: 72, max: 168, color: 'var(--color-risk)', count: 0 },
+    { label: '168–720 год', hint: 'Прийнятно', min: 168, max: 720, color: 'var(--color-primary)', count: 0 },
+    { label: '> 720 год', hint: 'Норма', min: 720, max: Infinity, color: 'var(--color-ok)', count: 0 },
+    { label: 'Невідомо', hint: 'ML не запущено', min: null, max: null, color: 'var(--color-text-faint)', count: 0 },
   ]
   units.value.forEach(u => {
-    const rul = u.rul_hours
-    if (rul == null) { buckets[4].count++; return }
-    const b = buckets.find(b => b.min != null && rul >= b.min && rul < b.max)
+    const h = u.rul_hours
+    if (h == null) { bs[4].count++; return }
+    const b = bs.find(b => b.min != null && h >= b.min && h < b.max)
     if (b) b.count++
   })
-  return buckets
+  return bs
 })
+
+const noRulData = computed(() =>
+  units.value.length > 0 && units.value.every(u => u.rul_hours == null)
+)
 
 const maxBucketCount = computed(() => Math.max(...rulBuckets.value.map(b => b.count), 1))
 
 function bucketBarHeight(count) {
-  return Math.round((count / maxBucketCount.value) * 80) + 4
+  return count === 0 ? 2 : Math.max(4, Math.round((count / maxBucketCount.value) * 80))
 }
 
 const avgRulLabel = computed(() => {
@@ -449,41 +438,31 @@ const avgRulLabel = computed(() => {
   return `${Math.round(avg)} год`
 })
 
-// ── Predicted modes ───────────────────────────────────────────
-
-const predictedModes = computed(() =>
-  units.value
-    .filter(u => u.predicted_mode)
-    .sort((a, b) => (a.rul_hours ?? Infinity) - (b.rul_hours ?? Infinity))
-)
-
-// ── Critical events ───────────────────────────────────────────
+// ── Events ────────────────────────────────────────────────────
 
 const cutoff = computed(() => new Date(Date.now() - 48 * 3600 * 1000).toISOString())
 
-const criticalEvents = computed(() =>
-  events.value
-    .filter(ev => ev.ts >= cutoff.value)
-    .slice(0, 20)
+const recentCritical = computed(() =>
+  events.value.filter(ev => ev.ts >= cutoff.value).slice(0, 25)
 )
 
-function getUnitSerial(unit_id) {
-  return units.value.find(u => u.id === unit_id)?.serial_no ?? String(unit_id)
+function getSerial(unit_id) {
+  return units.value.find(u => u.id === unit_id)?.serial_no ?? `#${unit_id}`
 }
 
 // ── Helpers ───────────────────────────────────────────────────
 
 function anomalyColor(score) {
-  if (score == null || score < 0.3) return '#16a34a'
-  if (score < 0.7) return '#f59e0b'
-  return '#dc2626'
+  if (score == null || score < 0.3) return 'var(--color-ok)'
+  if (score < 0.7) return 'var(--color-risk)'
+  return 'var(--color-imminent)'
 }
 
 function rulColor(h) {
   if (h == null) return 'var(--color-text-muted)'
-  if (h > 168) return '#16a34a'
-  if (h > 72) return '#f59e0b'
-  return '#dc2626'
+  if (h > 168) return 'var(--color-ok)'
+  if (h > 72) return 'var(--color-risk)'
+  return 'var(--color-imminent)'
 }
 
 function gaugeColor(pct, warnAt, critAt) {
@@ -492,10 +471,16 @@ function gaugeColor(pct, warnAt, critAt) {
   return 'var(--color-ok)'
 }
 
-function formatDateTime(ts) {
-  return new Intl.DateTimeFormat('uk-UA', {
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-  }).format(new Date(ts))
+function mbToGb(mb) {
+  return mb >= 1024 ? (mb / 1024).toFixed(0) + ' GB' : mb + ' MB'
+}
+
+function catLabel(cat) {
+  return { compute: 'Сервери', rotary: 'Обертові', cryo: 'Кріо', experimental: 'Експ.', server: 'Сервер' }[cat] ?? cat
+}
+
+function formatDt(ts) {
+  return new Intl.DateTimeFormat('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(ts))
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────
@@ -513,95 +498,280 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Top row */
-.analysis-grid-top {
-  display: grid;
-  grid-template-columns: 200px 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
+/* Section blocks */
+.section-block { margin-bottom: 28px; }
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
 }
-.analysis-score-card {
+.section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+}
+.section-desc {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+/* Empty state */
+.empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-.score-ring-wrap {
-  margin-top: 12px;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 16px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-align: center;
 }
 
-/* Mid row */
-.analysis-grid-mid {
+/* Sysinfo */
+.sysinfo-body { display: flex; flex-direction: column; gap: 16px; }
+.sysinfo-host {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+.sysinfo-hostname {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+.sysinfo-spec {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-surface-raised);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+}
+
+.sysinfo-gauges {
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 16px;
-  margin-bottom: 16px;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 20px;
+  align-items: start;
+}
+.sysinfo-gauge { display: flex; flex-direction: column; gap: 5px; }
+.sysinfo-gauge-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.sysinfo-gauge-name {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+.sysinfo-gauge-val {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+.gauge-track {
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.gauge-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+.sysinfo-gauge-sub {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
 }
 
-/* Bot row */
-.analysis-grid-bot {
+.sysinfo-ml-block {
+  padding-left: 20px;
+  border-left: 1px solid var(--color-border-accent);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 150px;
+}
+.sysinfo-ml-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ml-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.ml-metric-lbl { font-size: 11px; color: var(--color-text-muted); }
+.ml-metric-val { font-size: 15px; font-weight: 700; font-family: var(--font-mono); }
+.ml-metric-code { font-size: 10px; color: var(--color-risk); }
+.ml-pending { font-size: 11px; color: var(--color-text-faint); font-style: italic; }
+
+/* Fleet stats */
+.fleet-stat-row {
   display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 16px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+.fleet-stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fleet-stat-card.fleet-stat-imminent { border-top: 2px solid var(--color-imminent); }
+.fleet-stat-card.fleet-stat-risk { border-top: 2px solid var(--color-risk); }
+.fleet-stat-card.fleet-stat-ok { border-top: 2px solid var(--color-ok); }
+.fleet-stat-card.fleet-stat-score { border-top: 2px solid var(--color-primary); }
+.fleet-stat-num {
+  font-size: 32px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+.fleet-stat-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+.fleet-stat-hint {
+  font-size: 10px;
+  color: var(--color-text-faint);
+  line-height: 1.4;
+  margin-top: 2px;
 }
 
-/* Status bars */
-.status-bars { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
-.status-bar-row { display: flex; align-items: center; gap: 10px; }
-.status-bar-label { width: 70px; font-size: 13px; color: var(--color-text-muted); }
-.status-bar-track { flex: 1; height: 10px; background: #f1f5f9; border-radius: 5px; overflow: hidden; }
-.status-bar-fill { height: 100%; border-radius: 5px; transition: width 0.4s ease; }
-.status-bar-count { width: 28px; font-size: 14px; font-weight: 700; text-align: right; }
+/* Attention table */
+.attention-header {
+  display: grid;
+  grid-template-columns: 120px 110px 90px 90px 90px 1fr 70px;
+  gap: 8px;
+  padding: 0 8px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-faint);
+  border-bottom: 1px solid var(--color-border);
+}
+.attention-row {
+  display: grid;
+  grid-template-columns: 120px 110px 90px 90px 90px 1fr 70px;
+  gap: 8px;
+  padding: 10px 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.15s;
+}
+.attention-row:last-child { border-bottom: none; }
+.attention-row:hover { background: var(--color-surface-raised); }
+.attention-row.imminent { border-left: 2px solid var(--color-imminent); }
+.attention-row.risk { border-left: 2px solid var(--color-risk); }
+.attention-serial { font-weight: 600; font-family: var(--font-mono); font-size: 12px; }
+.attention-model { font-size: 11px; color: var(--color-text-muted); font-family: var(--font-mono); }
+.btn-detail {
+  font-size: 11px;
+  padding: 3px 10px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-accent);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  text-decoration: none;
+  text-align: center;
+  transition: background 0.15s;
+}
+.btn-detail:hover { background: var(--color-border-accent); color: var(--color-accent); }
 
-/* Analysis tables */
-.analysis-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
-.analysis-table th { text-align: left; font-size: 11px; font-weight: 600; color: var(--color-text-muted); padding: 0 8px 8px 0; border-bottom: 1px solid var(--color-border); }
-.analysis-table td { padding: 7px 8px 7px 0; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-.analysis-table tr:last-child td { border-bottom: none; }
-
-/* Category badge */
-.cat-badge { font-size: 11px; padding: 2px 7px; background: #f1f5f9; border-radius: 10px; }
-
-/* Anomaly ranking */
-.anomaly-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-.anomaly-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-.anomaly-serial { font-weight: 600; width: 80px; flex-shrink: 0; }
-.anomaly-model { font-size: 11px; color: var(--color-text-muted); width: 110px; flex-shrink: 0; font-family: monospace; }
-.anomaly-bar-track { flex: 1; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
-.anomaly-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
-.anomaly-score { width: 36px; text-align: right; font-weight: 600; font-size: 12px; }
+/* Anomaly list */
+.anomaly-list { display: flex; flex-direction: column; }
+.anomaly-row {
+  display: grid;
+  grid-template-columns: 120px 90px 1fr 46px 70px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.15s;
+}
+.anomaly-row:last-child { border-bottom: none; }
+.anomaly-row:hover { background: var(--color-surface-raised); }
+.anomaly-serial { font-weight: 600; font-family: var(--font-mono); font-size: 12px; }
+.anomaly-cat { font-size: 10px; color: var(--color-text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+.anomaly-bar-wrap { height: 6px; background: var(--color-border); border-radius: 2px; overflow: hidden; }
+.anomaly-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+.anomaly-pct { font-weight: 700; font-family: var(--font-mono); font-size: 12px; text-align: right; }
 
 /* RUL buckets */
-.rul-buckets { display: flex; gap: 12px; align-items: flex-end; justify-content: center; height: 120px; margin-top: 16px; }
-.rul-bucket { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
-.rul-bucket-bar-wrap { flex: 1; display: flex; align-items: flex-end; width: 100%; }
-.rul-bucket-bar { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.4s ease; min-height: 4px; }
-.rul-bucket-label { font-size: 10px; color: var(--color-text-muted); text-align: center; line-height: 1.3; }
-.rul-bucket-count { font-size: 13px; font-weight: 700; }
+.rul-grid {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  padding: 8px 0;
+}
+.rul-bucket { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.rul-bucket-bar-area { height: 80px; display: flex; align-items: flex-end; width: 100%; justify-content: center; }
+.rul-bucket-bar { width: 80%; border-radius: 2px 2px 0 0; transition: height 0.4s ease; min-height: 2px; }
+.rul-bucket-count { font-size: 16px; font-weight: 700; font-family: var(--font-mono); }
+.rul-bucket-label { font-size: 11px; color: var(--color-text-muted); text-align: center; line-height: 1.4; }
+.rul-bucket-hint { font-size: 10px; color: var(--color-text-faint); text-align: center; }
+.rul-avg-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.rul-avg-row strong { color: var(--color-text); }
 
-/* Event feed */
-.event-feed { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
-.event-feed-row { display: flex; gap: 10px; align-items: flex-start; }
-.event-feed-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
-.event-feed-dot.critical { background: #dc2626; }
-.event-feed-dot.warning { background: #f59e0b; }
-.event-feed-dot.info { background: #3b82f6; }
-.event-feed-body { flex: 1; }
-.event-feed-msg { font-size: 13px; }
-.event-feed-meta { display: flex; gap: 12px; margin-top: 2px; }
-
-/* Sysinfo card */
-.sysinfo-card { margin-bottom: 16px; }
-.sysinfo-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.sysinfo-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; font-family: var(--font-mono, monospace); color: var(--color-text-muted); }
-.sysinfo-loading { font-size: 13px; color: var(--color-text-muted); padding: 8px 0; }
-.sysinfo-gauges { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 24px; align-items: start; }
-.sysinfo-gauge { display: flex; flex-direction: column; gap: 6px; }
-.sysinfo-gauge-label { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
-.sysinfo-gauge-value { font-size: 20px; font-weight: 700; font-family: var(--font-mono, monospace); letter-spacing: normal; text-transform: none; }
-.sysinfo-gauge-track { height: 8px; background: var(--color-border, #e2e8f0); border-radius: 2px; overflow: hidden; }
-.sysinfo-gauge-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
-.sysinfo-gauge-detail { font-size: 11px; color: var(--color-text-muted); font-family: var(--font-mono, monospace); }
-.sysinfo-ml { display: flex; flex-direction: column; gap: 8px; padding-left: 24px; border-left: 1px solid var(--color-border, #e2e8f0); min-width: 160px; }
-.sysinfo-ml-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; }
-.sysinfo-ml-lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
+/* Event list */
+.event-list { display: flex; flex-direction: column; gap: 0; }
+.event-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+.event-row:last-child { border-bottom: none; }
+.event-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  margin-top: 4px; flex-shrink: 0;
+}
+.event-dot.critical { background: var(--color-imminent); box-shadow: 0 0 6px var(--color-imminent); }
+.event-dot.warning { background: var(--color-risk); }
+.event-dot.info { background: var(--color-primary); }
+.event-body { flex: 1; }
+.event-msg { font-size: 13px; }
+.event-meta { display: flex; gap: 14px; margin-top: 3px; font-size: 11px; color: var(--color-text-muted); }
 </style>
