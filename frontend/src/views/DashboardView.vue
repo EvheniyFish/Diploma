@@ -1,11 +1,12 @@
 <template>
   <div>
-    <div class="page-header">
-      <h1 class="page-title">Панель моніторингу CASS</h1>
-      <div class="page-actions">
-        <span style="font-size: 12px; color: var(--color-text-muted);">
-          Оновлено: {{ lastRefreshLabel }}
-        </span>
+    <div class="dash-hero">
+      <div class="dash-hero-top">
+        <h1 class="page-title">Панель моніторингу CASS</h1>
+        <span style="font-size: 12px; color: var(--color-text-muted);">Оновлено: {{ lastRefreshLabel }}</span>
+      </div>
+      <div class="dash-hero-subtitle">
+        Вебзастосунок для діагностики несправностей обладнання за допомогою прогнозної аналітики
       </div>
     </div>
 
@@ -150,3 +151,27 @@ onMounted(() => {
 
 onUnmounted(() => clearInterval(interval))
 </script>
+
+<style scoped>
+.dash-hero {
+  margin-bottom: 28px;
+}
+.dash-hero-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.dash-hero-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  padding: 8px 14px;
+  border-left: 3px solid var(--color-primary);
+  background: var(--color-primary-dim);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+</style>
