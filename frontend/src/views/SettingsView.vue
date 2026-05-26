@@ -133,8 +133,16 @@
         <div style="font-size: 13px; font-weight: 600;">{{ injectUnitId }}</div>
       </div>
       <div class="form-field">
-        <label class="form-label required">Код режиму відмови</label>
-        <InputText v-model="injectModeCode" style="width: 100%;" placeholder="OVERHEATING" />
+        <label class="form-label required">Режим відмови</label>
+        <Select
+          v-model="injectModeCode"
+          :options="injectModeOptions"
+          option-label="label"
+          option-value="value"
+          :placeholder="injectModesLoading ? 'Завантаження...' : 'Оберіть режим...'"
+          :disabled="injectModesLoading"
+          style="width: 100%;"
+        />
       </div>
       <div class="form-field">
         <label class="form-label">Горизонт, год</label>
@@ -154,8 +162,9 @@
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
 import Dialog from 'primevue/dialog'
-import api, { simApi } from '../api/index.js'
+import api, { simApi, unitsApi } from '../api/index.js'
 import { useNotificationsStore } from '../stores/notifications.js'
 
 const notifications = useNotificationsStore()
@@ -168,6 +177,8 @@ const mlStatus = ref(null)
 const showInjectDialog = ref(false)
 const injectUnitId = ref(null)
 const injectModeCode = ref('')
+const injectModeOptions = ref([])
+const injectModesLoading = ref(false)
 const injectHorizon = ref(48)
 const injectLoading = ref(false)
 
@@ -217,11 +228,22 @@ async function resetSim(unitId) {
   }
 }
 
-function openInjectDialog(unitId) {
+async function openInjectDialog(unitId) {
   injectUnitId.value = unitId
   injectModeCode.value = ''
+  injectModeOptions.value = []
   injectHorizon.value = 48
   showInjectDialog.value = true
+  injectModesLoading.value = true
+  try {
+    const unit = await unitsApi.get(unitId)
+    const modes = unit?.passport?.failure_modes ?? []
+    injectModeOptions.value = modes.map(m => ({ label: m.name ?? m.code, value: m.code }))
+  } catch {
+    injectModeOptions.value = []
+  } finally {
+    injectModesLoading.value = false
+  }
 }
 
 async function submitInject() {
