@@ -9,6 +9,18 @@
       </div>
     </div>
 
+    <PageIntro storage-key="models">
+      <template #icon>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </template>
+      <p><strong>Моделі обладнання</strong> — це паспорти типів техніки. Кожна модель описує, які саме сенсори (канали) є на пристрої, які значення вважаються нормою, а які — критичними, і які режими відмов можливі.</p>
+      <p>
+        <strong>Weibull η (ета)</strong> — характеристичний час до відмови в годинах (масштабний параметр).
+        <strong>Weibull β (бета)</strong> — форма кривої зносу: менше 1 — ранні відмови, близько 1 — випадкові, більше 2 — знос від старіння.
+      </p>
+      <p>Клікніть на рядок, щоб переглянути або редагувати паспорт. Кнопка <strong>+ Новий паспорт</strong> дозволяє зареєструвати новий тип обладнання і призначити йому ML-параметри.</p>
+    </PageIntro>
+
     <DataTable
       :value="modelsStore.models"
       :loading="modelsStore.loading"
@@ -58,6 +70,7 @@ import { onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+import PageIntro from '../components/PageIntro.vue'
 import { useModelsStore } from '../stores/models.js'
 
 const router = useRouter()

@@ -4,6 +4,19 @@
       <h1 class="page-title">Налаштування</h1>
     </div>
 
+    <PageIntro storage-key="settings">
+      <template #icon>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      </template>
+      <p><strong>Налаштування</strong> — керування симулятором і сервісами. Симулятор генерує реалістичну телеметрію для всіх зареєстрованих вузлів, імітуючи реальну деградацію обладнання.</p>
+      <p>
+        <strong>Швидкість симуляції</strong> — коефіцієнт прискорення часу (1.0 = реальний час, 10.0 = 10× швидше).
+        <strong>Ввести відмову</strong> — запустити конкретний сценарій деградації на обраному вузлі.
+        <strong>Скинути стан</strong> — повернути вузол до нормального стану після симульованої відмови.
+      </p>
+      <p>Розділ <strong>ML Сервіс</strong> дозволяє перевірити доступність сервісу машинного навчання, який виконує прогнозування кожні 5 хвилин.</p>
+    </PageIntro>
+
     <div class="settings-section">
       <div class="settings-section-title">Симулятор</div>
 
@@ -164,6 +177,7 @@ import { RouterLink } from 'vue-router'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Dialog from 'primevue/dialog'
+import PageIntro from '../components/PageIntro.vue'
 import api, { simApi, unitsApi } from '../api/index.js'
 import { useNotificationsStore } from '../stores/notifications.js'
 

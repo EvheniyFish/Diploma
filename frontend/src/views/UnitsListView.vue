@@ -17,6 +17,19 @@
       </div>
     </div>
 
+    <PageIntro storage-key="units">
+      <template #icon>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </template>
+      <p><strong>Обладнання</strong> — реєстр усіх фізичних одиниць техніки, підключених до системи моніторингу. Кожен запис — це конкретний пристрій (насос, сервер, кріостат) зі своїм серійним номером, паспортом та поточним станом здоров'я.</p>
+      <p>
+        Колонка <strong>Статус</strong> показує результат останнього ML-аналізу.
+        Колонка <strong>Аномалія</strong> — числовий показник відхилення від норми (0–100%).
+        Колонка <strong>RUL</strong> — прогнозований залишок ресурсу в годинах.
+      </p>
+      <p>Клікніть на рядок, щоб відкрити детальну сторінку вузла з графіками телеметрії та прогнозом відмов. Фільтри вгорі дозволяють знайти вузли за статусом, моделлю або локацією.</p>
+    </PageIntro>
+
     <div class="filters-row">
       <InputText
         v-model="search"
@@ -151,6 +164,7 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Dialog from 'primevue/dialog'
 import StatusBadge from '../components/StatusBadge.vue'
+import PageIntro from '../components/PageIntro.vue'
 import DatePicker from '../components/DatePicker.vue'
 import { useUnitsStore } from '../stores/units.js'
 import { useModelsStore } from '../stores/models.js'

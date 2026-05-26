@@ -10,6 +10,18 @@
       </div>
     </div>
 
+    <PageIntro storage-key="analysis">
+      <template #icon>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </template>
+      <p><strong>Аналіз системи</strong> — поглиблений погляд на весь парк обладнання одночасно. На відміну від панелі моніторингу, яка показує тільки поточний стан, тут є прогнози, тренди, сценарний аналіз і розподіл ризиків.</p>
+      <p>
+        Сторінка організована у блоки: <strong>Поточний сервер</strong> → <strong>Ситуаційний аналіз</strong> → <strong>Стан флоту</strong> → <strong>Вузли під загрозою</strong> → <strong>Рейтинг аномальності</strong> → <strong>Розподіл RUL</strong> → <strong>Критичні події</strong>.
+        Кожен блок підписаний — читайте підказку під заголовком.
+      </p>
+      <p>Усі дані оновлюються автоматично кожні 5 секунд. Клік на серійний номер вузла відкриває його детальну сторінку.</p>
+    </PageIntro>
+
     <!-- ══ 1. ПОТОЧНИЙ СЕРВЕР ══════════════════════════════════════ -->
     <div class="section-block">
       <div class="section-heading">
@@ -369,6 +381,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import StatusBadge from '../components/StatusBadge.vue'
 import InfoTip from '../components/InfoTip.vue'
+import PageIntro from '../components/PageIntro.vue'
 import { unitsApi, eventsApi, sysApi } from '../api/index.js'
 
 const units = ref([])

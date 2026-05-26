@@ -10,6 +10,19 @@
       </div>
     </div>
 
+    <PageIntro storage-key="dashboard">
+      <template #icon>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      </template>
+      <p><strong>Панель моніторингу</strong> — точка входу в систему. Тут відображається агрегований стан всього парку обладнання прямо зараз.</p>
+      <p>
+        <strong>OK</strong> — все в нормі, аномалій немає.
+        <strong>RISK</strong> — аномальна поведінка виявлена, ML-модель прогнозує деградацію. Потребує уваги впродовж тижня.
+        <strong>IMMINENT</strong> — критичний стан, відмова прогнозується менш ніж за 72 год. Потрібна негайна реакція.
+      </p>
+      <p>Оновлення кожні 30 секунд. Щоб побачити деталі — клікніть на рядок у таблиці або перейдіть до розділу <strong>Обладнання</strong>.</p>
+    </PageIntro>
+
     <div v-if="loading && !summary" class="loading-state">Завантаження...</div>
 
     <template v-else>
@@ -103,6 +116,7 @@ import { RouterLink } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import StatusBadge from '../components/StatusBadge.vue'
+import PageIntro from '../components/PageIntro.vue'
 import { useUnitsStore } from '../stores/units.js'
 
 const store = useUnitsStore()

@@ -12,6 +12,19 @@
       </div>
     </div>
 
+    <PageIntro storage-key="events">
+      <template #icon>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+      </template>
+      <p><strong>Журнал подій</strong> — хронологічний лог усього, що відбувалось в системі: зміни статусів, виявлені аномалії, зафіксовані ТО, ручні дії оператора.</p>
+      <p>
+        <strong>Критично</strong> — вузол перейшов у IMMINENT або виявлена серйозна аномалія.
+        <strong>Попередження</strong> — перехід у RISK, прогнозована деградація.
+        <strong>Інфо</strong> — планові події: ТО, скидання, зміна конфігурації.
+      </p>
+      <p>Використовуйте фільтри для пошуку за вузлом, рівнем важливості, типом або часовим діапазоном. Кнопка <strong>Експорт CSV</strong> збереже відфільтровану вибірку для звіту або подальшого аналізу.</p>
+    </PageIntro>
+
     <div class="filters-row">
       <Select
         v-model="filterUnit"
@@ -163,6 +176,7 @@ import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
 import Dialog from 'primevue/dialog'
 import DatePicker from '../components/DatePicker.vue'
+import PageIntro from '../components/PageIntro.vue'
 import { eventsApi, unitsApi } from '../api/index.js'
 import { useNotificationsStore } from '../stores/notifications.js'
 
