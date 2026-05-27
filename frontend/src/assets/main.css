@@ -511,6 +511,8 @@ a:hover { color: var(--color-accent); }
 .validation-ok    { color: var(--color-ok);       font-size: 11px; font-weight: 600; padding: 8px 12px; background: var(--color-ok-bg);       border-radius: var(--radius-md); border: 1px solid var(--color-ok-border);       font-family: var(--font-mono); }
 .validation-error { color: var(--color-imminent); font-size: 11px; font-weight: 600; padding: 8px 12px; background: var(--color-imminent-bg); border-radius: var(--radius-md); border: 1px solid var(--color-imminent-border); font-family: var(--font-mono); }
 .validation-error ul { margin-top: 6px; padding-left: 16px; }
+.validation-warn  { color: var(--color-risk); font-size: 11px; font-weight: 600; padding: 8px 12px; background: rgba(249,115,22,0.08); border-radius: var(--radius-md); border: 1px solid rgba(249,115,22,0.30); font-family: var(--font-mono); }
+.validation-warn ul { margin-top: 6px; padding-left: 16px; font-weight: 400; }
 
 /* ══════════ Settings ══════════ */
 .settings-section { margin-bottom: 30px; }

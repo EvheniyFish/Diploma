@@ -16,12 +16,21 @@
       </div>
     </div>
 
-    <div v-if="validationResult" :class="validationResult.ok ? 'validation-ok' : 'validation-error'" style="margin-bottom: 16px;">
-      <span v-if="validationResult.ok">JSON валідний. Паспорт коректний.</span>
-      <div v-else>
-        <strong>Помилки валідації:</strong>
+    <div v-if="validationResult" style="margin-bottom: 16px;">
+      <div :class="validationResult.ok ? 'validation-ok' : 'validation-error'">
+        <span v-if="validationResult.ok && !validationResult.warnings?.length">JSON валідний. Паспорт коректний.</span>
+        <span v-else-if="validationResult.ok">JSON валідний. Є рекомендації:</span>
+        <div v-if="!validationResult.ok">
+          <strong>Помилки валідації:</strong>
+          <ul>
+            <li v-for="(err, i) in validationResult.errors" :key="i">{{ err }}</li>
+          </ul>
+        </div>
+      </div>
+      <div v-if="validationResult.warnings?.length" class="validation-warn" style="margin-top: 6px;">
+        <strong>Рекомендації:</strong>
         <ul>
-          <li v-for="(err, i) in validationResult.errors" :key="i">{{ err }}</li>
+          <li v-for="(w, i) in validationResult.warnings" :key="i">{{ w }}</li>
         </ul>
       </div>
     </div>
@@ -194,10 +203,12 @@ function validate() {
   if (!parsed.model_code) errors.push('model_code — обов\'язкове поле')
   if (!parsed.display_name) errors.push('display_name — обов\'язкове поле')
   if (!parsed.category) errors.push('category — обов\'язкове поле')
-  if (!parsed.weibull) errors.push('weibull — обов\'язковий блок')
-  else {
-    if (parsed.weibull.eta == null) errors.push('weibull.eta — обов\'язкове поле')
-    if (parsed.weibull.beta == null) errors.push('weibull.beta — обов\'язкове поле')
+  const warnings = []
+  if (!parsed.weibull) {
+    warnings.push('weibull відсутній — параметри розподілу Вейбулла не будуть враховані в розрахунку RUL')
+  } else {
+    if (parsed.weibull.eta == null) warnings.push('weibull.eta відсутній — рекомендується вказати характеристичний час до відмови')
+    if (parsed.weibull.beta == null) warnings.push('weibull.beta відсутній — рекомендується вказати параметр форми зносу')
   }
   if (!Array.isArray(parsed.channels) || parsed.channels.length === 0) {
     errors.push('channels — масив каналів обов\'язковий')
@@ -209,9 +220,9 @@ function validate() {
   }
 
   if (errors.length === 0) {
-    validationResult.value = { ok: true, errors: [] }
+    validationResult.value = { ok: true, errors: [], warnings }
   } else {
-    validationResult.value = { ok: false, errors }
+    validationResult.value = { ok: false, errors, warnings }
   }
 }
 
