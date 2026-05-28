@@ -61,12 +61,12 @@
 
           <div style="margin-bottom: 16px; display: flex; gap: 24px;">
             <div>
-              <div style="font-size: 11px; text-transform: uppercase; color: var(--color-text-muted); letter-spacing: 0.04em;">Weibull η</div>
-              <div style="font-size: 16px; font-weight: 600;">{{ parsedPassport.weibull?.eta ?? '—' }}</div>
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--color-text-muted); letter-spacing: 0.04em;">Weibull η (год)</div>
+              <div style="font-size: 16px; font-weight: 600;">{{ parsedPassport.weibull_eta_hours ?? '—' }}</div>
             </div>
             <div>
               <div style="font-size: 11px; text-transform: uppercase; color: var(--color-text-muted); letter-spacing: 0.04em;">Weibull β</div>
-              <div style="font-size: 16px; font-weight: 600;">{{ parsedPassport.weibull?.beta ?? '—' }}</div>
+              <div style="font-size: 16px; font-weight: 600;">{{ parsedPassport.weibull_beta ?? '—' }}</div>
             </div>
           </div>
 
@@ -149,7 +149,8 @@ const PASSPORT_TEMPLATE = {
   model_code: 'MY_MODEL_001',
   display_name: 'Назва обладнання',
   category: 'pump',
-  weibull: { eta: 8760, beta: 2.5 },
+  weibull_eta_hours: 8760,
+  weibull_beta: 2.5,
   channels: [
     {
       code: 'TEMP_BEARING',
@@ -204,12 +205,8 @@ function validate() {
   if (!parsed.display_name) errors.push('display_name — обов\'язкове поле')
   if (!parsed.category) errors.push('category — обов\'язкове поле')
   const warnings = []
-  if (!parsed.weibull) {
-    warnings.push('weibull відсутній — параметри розподілу Вейбулла не будуть враховані в розрахунку RUL')
-  } else {
-    if (parsed.weibull.eta == null) warnings.push('weibull.eta відсутній — рекомендується вказати характеристичний час до відмови')
-    if (parsed.weibull.beta == null) warnings.push('weibull.beta відсутній — рекомендується вказати параметр форми зносу')
-  }
+  if (parsed.weibull_eta_hours == null) errors.push('weibull_eta_hours — обов\'язкове поле (характеристичний час до відмови, год)')
+  if (parsed.weibull_beta == null) errors.push('weibull_beta — обов\'язкове поле (параметр форми зносу, > 0)')
   if (!Array.isArray(parsed.channels) || parsed.channels.length === 0) {
     errors.push('channels — масив каналів обов\'язковий')
   } else {
