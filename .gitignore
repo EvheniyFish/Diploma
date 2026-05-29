@@ -25,8 +25,16 @@ build/
 # ML models (large binary files)
 ml_service/models/*.pkl
 
+# Generated training data (large, reproducible via simulator offline mode)
+ml_service/training_data/*.json
+simulator/training_data/
+
+# Runtime data
+backend/data/
+
 # Logs
 *.log
+*.err
 logs/
 
 # OS
