@@ -1,40 +1,66 @@
-﻿version: "3.9"
-
 services:
   backend:
     build: ./backend
-    ports:
-      - "3000:3000"
+    restart: unless-stopped
     environment:
       - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=3000
       - DB_PATH=/data/cass.db
       - ML_SERVICE_URL=http://ml_service:8000
+      - SIMULATOR_URL=http://simulator:3001
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:5173}
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-dev-admin-key}
+      - INGEST_API_KEY=${INGEST_API_KEY:-dev-ingest-key}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
     volumes:
       - db_data:/data
     depends_on:
-      - ml_service
+      ml_service:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
 
   ml_service:
     build: ./ml_service
-    ports:
-      - "8000:8000"
+    restart: unless-stopped
+    environment:
+      - PORT=8000
+      - MODELS_DIR=/app/models
+      - LOG_LEVEL=${ML_LOG_LEVEL:-info}
     volumes:
       - ./ml_service/models:/app/models:ro
+    expose:
+      - "8000"
 
   simulator:
     build: ./simulator
+    restart: unless-stopped
     environment:
-      - API_URL=http://backend:3000
-      - INTERVAL_MS=10000
+      - BACKEND_URL=http://backend:3000
+      - INGEST_API_KEY=${INGEST_API_KEY:-dev-ingest-key}
+      - CONTROL_PORT=3001
+      - TICK_INTERVAL_SECONDS=${TICK_INTERVAL_SECONDS:-10}
+      - TIME_SPEED_FACTOR=${TIME_SPEED_FACTOR:-1.0}
+      - SEED=${SIMULATOR_SEED:-42}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    expose:
+      - "3001"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_ADMIN_KEY: ${ADMIN_API_KEY:-dev-admin-key}
+        VITE_API_URL: /api/v1
+    restart: unless-stopped
     ports:
-      - "5173:80"
+      - "${FRONTEND_PORT:-5173}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   db_data:

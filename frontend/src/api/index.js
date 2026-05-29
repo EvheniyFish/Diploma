@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1',
+  baseURL: import.meta.env.VITE_API_URL || '/api/v1',
   timeout: 15000,
   headers: {
     'x-api-key': import.meta.env.VITE_ADMIN_KEY || 'dev-admin-key'
@@ -45,7 +45,7 @@ export const eventsApi = {
   list: (params) => api.get('/events', { params }),
   create: (body) => api.post('/events', body),
   exportUrl: (params) => {
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'
+    const base = import.meta.env.VITE_API_URL || '/api/v1'
     const qs = params ? '?' + new URLSearchParams(
       Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
     ).toString() : ''

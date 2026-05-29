@@ -1,70 +1,153 @@
-# CASS — Condition-based Anomaly & Signature System
+# CASS - Condition-based Anomaly & Signature System
 
-Платформа прогностичного технічного обслуговування обладнання на основі аналізу телеметрії та машинного навчання.
+CASS is a predictive maintenance demo platform with a Fastify API, SQLite storage, FastAPI ML service, Node.js telemetry simulator, and Vue frontend.
 
-## Про проект
+## Services
 
-CASS реалізує концепцію **Condition-Based Maintenance (CBM)** відповідно до стандартів ISO 13374 та ISO 17359. Система не прив'язана до конкретного типу обладнання — будь-який пристрій описується декларативним JSON-паспортом із каналами сигналів, пороговими значеннями та режимами відмов.
+| Service | Stack | Default URL |
+| --- | --- | --- |
+| Frontend | Vue 3, Vite, Nginx in Docker | http://localhost:5173 |
+| Backend API | Node.js 20, Fastify, SQLite | http://localhost:3000/api/v1 |
+| ML service | Python 3.11, FastAPI, scikit-learn | internal in Docker, http://localhost:8000 locally |
+| Simulator | Node.js 20 | internal control API on 3001 |
 
-### Ключові можливості
+## Fastest Start: Docker
 
-- **Моніторинг в реальному часі** — прийом телеметрії з будь-якого обладнання
-- **Виявлення аномалій** — IsolationForest на ~200 ознаках сигналу
-- **Класифікація режиму відмови** — RandomForest (14 режимів для 4 типів обладнання)
-- **Прогноз залишкового ресурсу (RUL)** — GradientBoosting з довірчим інтервалом 90%
-- **Обладнання-агностична архітектура** — сервер, насос, кріогенна установка, будь-що
+Requirements:
 
-## Стек технологій
-
-| Компонент | Технологія |
-|-----------|-----------|
-| REST API | Node.js 20, Fastify 4, SQLite (WAL) |
-| ML Service | Python 3.11, FastAPI, scikit-learn |
-| Simulator | Node.js 20 (14 режимів деградації) |
-| Frontend | Vue 3, Vite 5, PrimeVue 4, Apache ECharts |
-
-## Архітектура
-
-```
-Frontend (Vue 3) :5173
-        │
-        ▼
-Fastify API :3000 ──── SQLite
-        │
-        ▼
-FastAPI ML :8000
-
-Node.js Simulator → POST /api/v1/ingest (кожні 10 с)
-```
-
-## Швидкий старт
+- Docker Desktop on Windows/macOS, or Docker Engine + Compose on Linux.
 
 ```bash
-# Клонувати репозиторій
-git clone https://github.com/EvheniyFish/CASS.git
-cd CASS
-
-# Запустити всі сервіси
-docker-compose up
-
-# Або вручну (4 термінали):
-cd backend  && npm install && npm run dev   # :3000
-cd ml_service && pip install -r requirements.txt && uvicorn app.main:app --reload  # :8000
-cd simulator  && npm install && npm start
-cd frontend   && npm install && npm run dev  # :5173
+cp .env.example .env
+docker compose up --build -d
+docker compose logs -f
 ```
 
-Після запуску: засіяти демо-дані:
+Open:
+
+```text
+http://localhost:5173
+```
+
+Useful commands:
+
 ```bash
-./scripts/seed_demo.sh
+docker compose ps
+docker compose logs -f backend
+docker compose down
+docker compose down -v   # also removes the SQLite volume
 ```
 
-Відкрити браузер: [http://localhost:5173](http://localhost:5173)
+The backend container seeds the demo database automatically on first start. The seed is idempotent and skips when models already exist.
 
-## Статус проекту
+## Windows Local Development
 
-Реалізація ведеться за 24-commit roadmap. Детальна технічна специфікація — у `CASS_SPEC.md`.
+Requirements:
 
-## Ліцензія
+- Node.js 20 LTS
+- Python 3.11, optional but needed for the ML service
+- PowerShell
 
-MIT
+Install dependencies:
+
+```powershell
+cd D:\PersonalProjects\CASS
+.\scripts\setup.ps1
+```
+
+Start all local dev services:
+
+```powershell
+.\scripts\start-dev.ps1
+```
+
+The script opens separate PowerShell windows for backend, simulator, frontend, and ML service when the Python virtual environment exists.
+
+Manual Windows start:
+
+```powershell
+cd D:\PersonalProjects\CASS\backend
+npm ci
+node src\db\seed.js
+npm run dev
+```
+
+```powershell
+cd D:\PersonalProjects\CASS\simulator
+npm ci
+npm start
+```
+
+```powershell
+cd D:\PersonalProjects\CASS\frontend
+npm ci
+npm run dev
+```
+
+```powershell
+cd D:\PersonalProjects\CASS\ml_service
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+## Linux/macOS Local Development
+
+Requirements:
+
+- Node.js 20 LTS
+- Python 3.11, optional but needed for the ML service
+
+```bash
+cd /path/to/CASS
+chmod +x scripts/*.sh
+./scripts/setup.sh
+./scripts/start-dev.sh
+```
+
+Manual Linux/macOS start uses the same service order:
+
+```bash
+cd backend && npm ci && node src/db/seed.js && npm run dev
+cd simulator && npm ci && npm start
+cd frontend && npm ci && npm run dev
+cd ml_service && python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt && uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+## Environment
+
+Copy `.env.example` to `.env` for Docker Compose:
+
+```env
+ADMIN_API_KEY=change-me-admin
+INGEST_API_KEY=change-me-ingest
+FRONTEND_PORT=5173
+BACKEND_PORT=3000
+CORS_ORIGIN=http://localhost:5173
+```
+
+For production-like use, change both API keys. The frontend currently sends `VITE_ADMIN_KEY` when configured for local development, so do not expose a real admin key in a public client build without adding a proper login/session layer.
+In Docker, `ADMIN_API_KEY` is passed into the frontend build as `VITE_ADMIN_KEY`; rebuild the frontend image after changing `.env`:
+
+```bash
+docker compose up --build -d frontend backend
+```
+
+## Health Check
+
+```bash
+curl -H "x-api-key: dev-admin-key" http://localhost:3000/api/v1/healthz
+```
+
+Expected without ML:
+
+```json
+{"status":"ok","db":"ok","ml":"unavailable"}
+```
+
+Expected with ML running:
+
+```json
+{"status":"ok","db":"ok","ml":"ok"}
+```
