@@ -81,6 +81,8 @@
             :key="u.id"
             :to="`/units/${u.id}`"
             class="imminent-strip-link"
+            target="_blank"
+            rel="noopener noreferrer"
           >{{ u.serial_no }}</RouterLink>
           <span v-if="imminentUnits.length > 6" class="imminent-strip-more">
             +{{ imminentUnits.length - 6 }} ще

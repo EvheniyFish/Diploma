@@ -74,7 +74,7 @@
             <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Канали ({{ parsedPassport.channels.length }})</div>
             <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
               <thead>
-                <tr style="background: #f8fafc;">
+                <tr>
                   <th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border); font-weight: 600;">Код</th>
                   <th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border); font-weight: 600;">Клас</th>
                   <th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border); font-weight: 600;">Одиниця</th>
