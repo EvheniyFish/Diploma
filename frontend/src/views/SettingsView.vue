@@ -35,7 +35,6 @@
           <thead>
             <tr>
               <th>ID вузла</th>
-              <th>Серійний номер</th>
               <th>Код моделі</th>
               <th>Здоров'я</th>
               <th>Активний режим</th>
@@ -48,20 +47,19 @@
               <td>
                 <RouterLink :to="`/units/${row.unit_id}`" style="font-size: 12px;">{{ row.unit_id }}</RouterLink>
               </td>
-              <td>{{ row.serial_no }}</td>
               <td style="font-family: monospace; font-weight: 600;">{{ row.model_code }}</td>
               <td>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <div style="width: 80px; background: #f1f5f9; border-radius: 4px; overflow: hidden; height: 8px;">
                     <div
                       :style="{
-                          width: ((row.predicted_health ?? row.health) * 100).toFixed(0) + '%',
-                          background: healthColor(row.predicted_health ?? row.health),
-                          height: '100%'
-                        }"
+                        width: (row.health * 100).toFixed(0) + '%',
+                        background: healthColor(row.health),
+                        height: '100%'
+                      }"
                     ></div>
                   </div>
-                    <span style="font-size: 12px;">{{ ((row.predicted_health ?? row.health) * 100).toFixed(0) }}%</span>
+                  <span style="font-size: 12px;">{{ (row.health * 100).toFixed(0) }}%</span>
                 </div>
               </td>
               <td>{{ row.active_mode ?? '—' }}</td>
@@ -174,13 +172,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Dialog from 'primevue/dialog'
 import PageIntro from '../components/PageIntro.vue'
-import api, { simApi, unitsApi, forecastApi, eventsApi } from '../api/index.js'
+import api, { simApi, unitsApi, forecastApi } from '../api/index.js'
 import { useNotificationsStore } from '../stores/notifications.js'
 
 const notifications = useNotificationsStore()
@@ -213,40 +211,11 @@ async function loadSimState() {
   try {
     const data = await simApi.state()
     simState.value = Array.isArray(data) ? data : []
-    await enrichWithPredictedHealth()
   } catch (e) {
     notifications.add('error', 'Помилка завантаження стану симулятора: ' + e.message)
   } finally {
     simLoading.value = false
   }
-}
-
-// Merge ML/forecast health where available so UI reflects predictions
-async function enrichWithPredictedHealth() {
-  if (!simState.value || simState.value.length === 0) return
-  await Promise.all(simState.value.map(async (row) => {
-    // fetch forecast/health and unit details in parallel
-    const tasks = [
-      api.get(`/forecast/units/${row.unit_id}`).catch(() => null),
-      unitsApi.get(row.unit_id).catch(() => null),
-    ]
-    const [forecastRes, unitRes] = await Promise.all(tasks)
-
-    // attach serial_no from backend unit record when available
-    if (unitRes && unitRes.serial_no) {
-      row.serial_no = unitRes.serial_no
-    }
-
-    const h = forecastRes ? forecastRes.health : null
-    if (h && typeof h.anomaly_score === 'number') {
-      // simple mapping: predicted health = 1 - anomaly_score
-      row.predicted_health = Math.max(0, 1 - h.anomaly_score)
-      row.predicted_status = h.status
-    } else {
-      row.predicted_health = null
-      row.predicted_status = h ? h.status : null
-    }
-  }))
 }
 
 async function applySpeed() {
@@ -266,21 +235,7 @@ async function resetSim(unitId) {
   if (!confirm(`Скинути стан вузла ${unitId}?`)) return
   try {
     await simApi.resetUnit({ unit_id: unitId })
-    try {
-      await forecastApi.resetUnit(Number(unitId))
-    } catch (_err) {
-      // ignore forecast reset errors
-    }
-    try {
-      await eventsApi.create({
-        unit_id: Number(unitId),
-        severity: 'info',
-        event_type: 'reset_state',
-        message: 'Стан вузла скинуто до норми'
-      })
-    } catch (_err) {
-      // non-fatal
-    }
+    await forecastApi.resetUnit(unitId)
     notifications.add('success', `Стан вузла ${unitId} скинуто`)
     await loadSimState()
   } catch (e) {
@@ -333,13 +288,4 @@ async function checkHealth() {
 }
 
 onMounted(() => loadSimState())
-let simInterval = null
-onMounted(() => {
-  loadSimState()
-  simInterval = setInterval(loadSimState, 30000)
-})
-
-onUnmounted(() => {
-  if (simInterval) clearInterval(simInterval)
-})
 </script>

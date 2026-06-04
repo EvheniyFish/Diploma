@@ -16,7 +16,7 @@
           <h1 class="unit-title">{{ unit.serial_no }}</h1>
           <div class="unit-subtitle">{{ unit.display_name }}<span class="sep-dot">·</span>{{ unit.location }}</div>
         </div>
-        <StatusBadge :status="unit.status" size="lg" />
+        <StatusBadge :status="health.status || unit.status" size="lg" />
       </div>
 
       <div class="detail-grid" style="margin-bottom: 28px;">
@@ -424,6 +424,8 @@ function openMaintenanceDialog() {
 async function submitMaintenance() {
   actionLoading.value = true
   try {
+    await simApi.resetUnit({ unit_id: parseInt(route.params.id) })
+    await forecastApi.resetUnit(parseInt(route.params.id))
     await eventsApi.create({
       unit_id: parseInt(route.params.id),
       severity: 'info',
@@ -432,7 +434,12 @@ async function submitMaintenance() {
     })
     notifications.add('success', 'Подію ТО зафіксовано')
     showMaintenanceDialog.value = false
-    loadEvents()
+    await loadUnit()
+    await loadHealth()
+    await loadEvents()
+    if (refreshImminentUnits) {
+      await refreshImminentUnits()
+    }
   } catch (e) {
     notifications.add('error', 'Помилка: ' + e.message)
   } finally {

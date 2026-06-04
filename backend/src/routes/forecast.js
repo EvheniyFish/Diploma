@@ -102,12 +102,18 @@ module.exports = async (fastify) => {
       });
     }
 
-    db.prepare(
-      `UPDATE health_state SET status='ok', anomaly_score=0, predicted_mode=NULL,
-        rul_hours=NULL, rul_lower_hours=NULL, rul_upper_hours=NULL,
-        last_updated=strftime('%Y-%m-%dT%H:%M:%SZ','now')
-       WHERE unit_id=?`
-    ).run(Number(unit_id));
+    const resetState = db.transaction((id) => {
+      db.prepare("DELETE FROM telemetry WHERE unit_id=?").run(id);
+
+      db.prepare(
+        `UPDATE health_state SET status='ok', anomaly_score=0, predicted_mode=NULL,
+          predicted_mode_conf=NULL, rul_hours=NULL, rul_lower_hours=NULL, rul_upper_hours=NULL,
+          last_updated=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+         WHERE unit_id=?`
+      ).run(id);
+    });
+
+    resetState(Number(unit_id));
 
     return reply.code(200).send({ ok: true, unit_id: Number(unit_id) });
   });

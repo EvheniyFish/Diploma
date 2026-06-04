@@ -13,6 +13,7 @@ services:
       - ADMIN_API_KEY=${ADMIN_API_KEY:-dev-admin-key}
       - INGEST_API_KEY=${INGEST_API_KEY:-dev-ingest-key}
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      - REASSESSMENT_INTERVAL_MS=120000
     volumes:
       - db_data:/data
     depends_on:
