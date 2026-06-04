@@ -97,7 +97,14 @@
       </Column>
       <Column header="">
         <template #body="{ data }">
-          <RouterLink :to="`/units/${data.id}`" style="font-size: 12px;" @click.stop>Деталі</RouterLink>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <RouterLink :to="`/units/${data.id}`" style="font-size: 12px;" @click.stop>Деталі</RouterLink>
+            <button
+              class="time-range-btn status-badge imminent"
+              @click.stop.prevent="confirmDelete(data.id)"
+              title="Видалити вузол"
+            >Видалити</button>
+          </div>
         </template>
       </Column>
     </DataTable>
@@ -277,4 +284,13 @@ onMounted(async () => {
   ]
   refresh()
 })
+
+async function confirmDelete(id) {
+  if (!confirm(`Видалити вузол #${id}? Це дія незворотна.`)) return
+  try {
+    await store.deleteUnit(id)
+  } catch (e) {
+    // store shows notification on error
+  }
+}
 </script>
