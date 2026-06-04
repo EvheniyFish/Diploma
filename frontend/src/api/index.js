@@ -39,6 +39,8 @@ export const unitsApi = {
 
 export const forecastApi = {
   summary: () => api.get('/forecast/summary'),
+  refresh: (unit_id) => api.post(`/forecast/refresh?unit_id=${unit_id}`),
+  resetUnit: (unit_id) => api.post('/forecast/reset_unit', { unit_id }),
 }
 
 export const eventsApi = {

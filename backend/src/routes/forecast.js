@@ -75,4 +75,40 @@ module.exports = async (fastify) => {
 
     return reply.code(202).send({ triggered: true, unit_id: null });
   });
+
+  fastify.post("/forecast/reset_unit", async (req, reply) => {
+    const { unit_id } = req.body;
+
+    if (!unit_id) {
+      return reply.code(400).send({
+        type: "https://httpstatuses.com/400",
+        title: "Неправильний запит",
+        status: 400,
+        detail: "unit_id is required",
+      });
+    }
+
+    const db = getDb();
+    const unit = db
+      .prepare("SELECT id FROM equipment_units WHERE id=? AND is_active=1")
+      .get(Number(unit_id));
+
+    if (!unit) {
+      return reply.code(404).send({
+        type: "https://httpstatuses.com/404",
+        title: "Одиниця обладнання не знайдена",
+        status: 404,
+        detail: `Активна одиниця #${unit_id} не знайдена`,
+      });
+    }
+
+    db.prepare(
+      `UPDATE health_state SET status='ok', anomaly_score=0, predicted_mode=NULL,
+        rul_hours=NULL, rul_lower_hours=NULL, rul_upper_hours=NULL,
+        last_updated=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+       WHERE unit_id=?`
+    ).run(Number(unit_id));
+
+    return reply.code(200).send({ ok: true, unit_id: Number(unit_id) });
+  });
 };

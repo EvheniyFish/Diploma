@@ -282,7 +282,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, inject } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -294,11 +294,12 @@ import HealthGauge from '../components/HealthGauge.vue'
 import RulIndicator from '../components/RulIndicator.vue'
 import ChannelCard from '../components/ChannelCard.vue'
 import TelemetryChart from '../components/TelemetryChart.vue'
-import { unitsApi, eventsApi, simApi } from '../api/index.js'
+import { unitsApi, eventsApi, simApi, forecastApi } from '../api/index.js'
 import { useNotificationsStore } from '../stores/notifications.js'
 
 const route = useRoute()
 const notifications = useNotificationsStore()
+const refreshImminentUnits = inject('refreshImminentUnits')
 
 const unit = ref(null)
 const health = ref({})
@@ -383,7 +384,8 @@ async function loadUnit() {
 
 async function loadHealth() {
   try {
-    health.value = await unitsApi.forecast(route.params.id)
+    const response = await unitsApi.forecast(route.params.id)
+    health.value = response.health || response
   } catch { /* background refresh, silent */ }
 }
 
@@ -465,8 +467,19 @@ async function resetUnit() {
   actionLoading.value = true
   try {
     await simApi.resetUnit({ unit_id: parseInt(route.params.id) })
+    await forecastApi.resetUnit(parseInt(route.params.id))
+    await eventsApi.create({
+      unit_id: parseInt(route.params.id),
+      severity: 'info',
+      event_type: 'reset_state',
+      message: 'Стан вузла скинуто до норми'
+    })
+    await loadUnit()
+    await loadEvents()
+    if (refreshImminentUnits) {
+      await refreshImminentUnits()
+    }
     notifications.add('success', 'Стан вузла скинуто')
-    await loadHealth()
   } catch (e) {
     notifications.add('error', 'Помилка: ' + e.message)
   } finally {

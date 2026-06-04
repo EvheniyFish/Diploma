@@ -114,7 +114,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, provide } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import { useNotificationsStore } from './stores/notifications.js'
 import { unitsApi } from './api/index.js'
@@ -157,6 +157,9 @@ async function checkImminentUnits() {
     imminentCount.value = units.length
   } catch { /* silent — backend may be down */ }
 }
+
+// Expose for child components to refresh imminent list after reset
+provide('refreshImminentUnits', checkImminentUnits)
 
 onMounted(async () => {
   const saved = localStorage.getItem('cass-theme') || 'dark'
