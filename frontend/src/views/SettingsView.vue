@@ -223,6 +223,7 @@ async function applySpeed() {
   speedLoading.value = true
   try {
     await simApi.speed({ factor: speedFactor.value })
+    localStorage.setItem('cass-sim-speed', speedFactor.value)
     notifications.add('success', 'Швидкість симуляції змінено')
   } catch (e) {
     notifications.add('error', 'Помилка: ' + e.message)
@@ -286,5 +287,11 @@ async function checkHealth() {
   }
 }
 
-onMounted(() => loadSimState())
+onMounted(() => {
+  loadSimState()
+  const saved = localStorage.getItem('cass-sim-speed')
+  if (saved) {
+    speedFactor.value = parseFloat(saved)
+  }
+})
 </script>
