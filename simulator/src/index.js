@@ -129,7 +129,7 @@ console.log(
 );
 
 // Start control API
-createControlServer(config.controlPort, unitsMap, simControl);
+createControlServer(config.controlPort, unitsMap, simControl, PASSPORTS, UnitState);
 
 // Run first tick immediately, then on schedule
 tick().catch(err => console.error("[tick] Error:", err.message));

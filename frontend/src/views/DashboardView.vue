@@ -55,7 +55,7 @@
               <RouterLink :to="`/units/${data.id}`" style="font-weight: 500;">{{ data.serial_no }}</RouterLink>
             </template>
           </Column>
-          <Column field="display_name" header="Модель" sortable />
+          <Column field="model_code" header="Модель" sortable />
           <Column field="location" header="Розташування" />
           <Column field="status" header="Статус">
             <template #body="{ data }">

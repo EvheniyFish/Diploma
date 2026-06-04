@@ -54,9 +54,11 @@ function json(res, status, body) {
  * @param {number}             port       - TCP port to listen on
  * @param {Map<number, UnitState>} unitsMap - Map from unit_id → UnitState
  * @param {object}             simControl  - Mutable object with {timeSpeedFactor, paused}
+ * @param {object}             PASSPORTS   - Map of model_code → passport (for auto-init)
+ * @param {class}              UnitState   - UnitState class (for auto-init)
  * @returns {http.Server}
  */
-function createControlServer(port, unitsMap, simControl) {
+function createControlServer(port, unitsMap, simControl, PASSPORTS = {}, UnitStateClass = null) {
   const server = http.createServer(async (req, res) => {
     const { method, url } = req;
 
@@ -85,9 +87,29 @@ function createControlServer(port, unitsMap, simControl) {
         return json(res, 400, { error: "unit_id and mode_code are required" });
       }
 
-      const unit = unitsMap.get(Number(unit_id));
+      let unit = unitsMap.get(Number(unit_id));
+      
+      // Auto-initialize unit if not found and we have passports
+      if (!unit && Object.keys(PASSPORTS).length > 0 && UnitStateClass) {
+        try {
+          // Use first available passport as default (fallback for new units)
+          const modelCode = Object.keys(PASSPORTS)[0];
+          const passport = PASSPORTS[modelCode];
+          unit = new UnitStateClass({
+            unit_id: Number(unit_id),
+            model_code: modelCode,
+            passport,
+            initial_age_hours: 1000,
+          });
+          unitsMap.set(Number(unit_id), unit);
+          console.log(`[control] auto-initialized unit=${unit_id} with model=${modelCode}`);
+        } catch (e) {
+          return json(res, 400, { error: `Failed to auto-initialize unit: ${e.message}` });
+        }
+      }
+      
       if (!unit) {
-        return json(res, 404, { error: `Unit ${unit_id} not found` });
+        return json(res, 404, { error: `Unit ${unit_id} not found and could not be auto-initialized` });
       }
 
       try {

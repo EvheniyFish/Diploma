@@ -453,8 +453,20 @@ async function submitFault() {
     const body = { unit_id: parseInt(route.params.id), mode_code: faultMode.value }
     if (faultHorizon.value) body.horizon_hours = faultHorizon.value
     await simApi.injectFault(body)
+    await eventsApi.create({
+      unit_id: parseInt(route.params.id),
+      severity: 'critical',
+      event_type: 'fault_injected',
+      message: `Симульована відмова: ${faultMode.value} (горизонт ${faultHorizon.value || 48} год)`
+    })
     notifications.add('success', 'Відмову введено')
     showFaultDialog.value = false
+    await loadUnit()
+    await loadHealth()
+    await loadEvents()
+    if (refreshImminentUnits) {
+      await refreshImminentUnits()
+    }
   } catch (e) {
     notifications.add('error', 'Помилка: ' + e.message)
   } finally {

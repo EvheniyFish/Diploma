@@ -73,7 +73,7 @@
           <span style="font-weight: 500;">{{ data.serial_no }}</span>
         </template>
       </Column>
-      <Column field="display_name" header="Модель" sortable />
+      <Column field="model_code" header="Модель" sortable />
       <Column field="location" header="Розташування" />
       <Column field="status" header="Статус" sortable>
         <template #body="{ data }">
